@@ -19,7 +19,6 @@ dependencies:
   google_maps_flutter: ^2.3.0
   flutter_polyline_points: ^2.1.0
   image_picker: ^1.0.4
-  flutter_local_notifications: ^16.1.0
   shared_preferences: ^2.2.2
 
 dev_dependencies:

@@ -55,12 +55,6 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               // TODO: Implement share functionality
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.bookmark_outline),
-            onPressed: () {
-              // TODO: Implement bookmark functionality
-            },
-          ),
         ],
       ),
       body: FutureBuilder<EmergencyService?>(

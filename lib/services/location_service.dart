@@ -79,9 +79,8 @@ class LocationService {
   // Get address from coordinates (Geocoding)
   // This would typically use a geocoding service
   Future<String?> getAddressFromCoordinates(double latitude, double longitude) async {
-    // For now, just return a placeholder
-    // In a real app, you would use a geocoding service like Google Maps Geocoding API
-    _currentAddress = "Current Location";
+    // Format the coordinates as requested
+    _currentAddress = "Long: $longitude, Lat: $latitude";
     addressNotifier.value = _currentAddress;
     return _currentAddress;
   }

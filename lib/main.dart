@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'services/location_service.dart';
 import 'services/api_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,11 +15,16 @@ void main() async {
   
   final apiService = ApiService();
   
+  // Initialize notification service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  
   runApp(
     MultiProvider(
       providers: [
         Provider<LocationService>.value(value: locationService),
         Provider<ApiService>.value(value: apiService),
+        Provider<NotificationService>.value(value: notificationService),
       ],
       child: const EmergencyServicesApp(),
     ),
@@ -30,8 +36,11 @@ class EmergencyServicesApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final notificationService = Provider.of<NotificationService>(context, listen: false);
+    
     return MaterialApp(
       title: 'Emergency Services',
+      scaffoldMessengerKey: notificationService.scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,

@@ -1,16 +1,15 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/emergency_alert.dart';
+import 'notification_service.dart';
 
 class AlertService {
   // Singleton pattern
   static final AlertService _instance = AlertService._internal();
   factory AlertService() => _instance;
   AlertService._internal();
-
-  // Notifications plugin
-  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  
+  // Reference to notification service
+  final NotificationService _notificationService = NotificationService();
   
   // Stream controllers for alerts
   final StreamController<List<EmergencyAlert>> _alertsController = StreamController<List<EmergencyAlert>>.broadcast();
@@ -22,35 +21,8 @@ class AlertService {
 
   // Initialize the service
   Future<void> initialize() async {
-    // Initialize notifications
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
-    
-    await _notificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
-
     // Load initial alerts (mock data for now)
     await _loadMockAlerts();
-  }
-
-  // Handle notification tap
-  void _onNotificationTapped(NotificationResponse details) {
-    // TODO: Navigate to alert details screen
-    debugPrint('Notification tapped: ${details.payload}');
   }
 
   // Load mock alerts
@@ -150,37 +122,15 @@ class AlertService {
     _alertsController.add(_alerts);
     
     // Show notification
-    await _showNotification(alert);
+    _showNotification(alert);
   }
 
   // Show notification for an alert
-  Future<void> _showNotification(EmergencyAlert alert) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'emergency_alerts_channel',
-      'Emergency Alerts',
-      channelDescription: 'Notifications for emergency alerts',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-    );
-    
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-    
-    await _notificationsPlugin.show(
-      alert.id.hashCode,
-      '${alert.type.name}: ${alert.title}',
-      alert.description,
-      notificationDetails,
-      payload: alert.id,
+  void _showNotification(EmergencyAlert alert) {
+    _notificationService.showNotification(
+      title: '${alert.type.name}: ${alert.title}',
+      message: alert.description,
+      backgroundColor: alert.type.color,
     );
   }
 
