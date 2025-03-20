@@ -5,6 +5,8 @@ import 'screens/home_screen.dart';
 import 'services/location_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
+import 'services/alert_service.dart';
+import 'models/user_profile.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,12 +21,18 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.initialize();
   
+  // Initialize alert service
+  final alertService = AlertService();
+  alertService.initialize(notificationService);
+  
   runApp(
     MultiProvider(
       providers: [
         Provider<LocationService>.value(value: locationService),
         Provider<ApiService>.value(value: apiService),
         Provider<NotificationService>.value(value: notificationService),
+        Provider<AlertService>.value(value: alertService),
+        ChangeNotifierProvider(create: (_) => UserProfileProvider()),
       ],
       child: const EmergencyServicesApp(),
     ),

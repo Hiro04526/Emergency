@@ -9,7 +9,7 @@ class AlertService {
   AlertService._internal();
   
   // Reference to notification service
-  final NotificationService _notificationService = NotificationService();
+  late final NotificationService _notificationService;
   
   // Stream controllers for alerts
   final StreamController<List<EmergencyAlert>> _alertsController = StreamController<List<EmergencyAlert>>.broadcast();
@@ -20,7 +20,8 @@ class AlertService {
   List<EmergencyAlert> get alerts => List.unmodifiable(_alerts);
 
   // Initialize the service
-  Future<void> initialize() async {
+  Future<void> initialize(NotificationService notificationService) async {
+    _notificationService = notificationService;
     // Load initial alerts (mock data for now)
     await _loadMockAlerts();
   }
@@ -35,67 +36,32 @@ class AlertService {
     final mockAlerts = [
       EmergencyAlert(
         id: 'alert-1',
-        title: 'Flash Flood Warning',
-        description: 'Flash flood warning issued for Marikina River. Water level rising rapidly. Evacuate low-lying areas immediately.',
-        type: AlertType.weather,
+        title: 'Road Blockage at Pasig blvd',
+        description: 'Major road blockage due to construction work. Expect heavy traffic. Find alternative routes.',
+        type: AlertType.traffic,
         timestamp: now.subtract(const Duration(hours: 2)),
-        source: 'PAGASA',
-        location: 'Marikina City',
-        latitude: 14.6507,
-        longitude: 121.1029,
+        source: 'MMDA',
+        location: 'Pasig City',
+        latitude: 14.5764,
+        longitude: 121.0851,
         isActive: true,
       ),
       EmergencyAlert(
         id: 'alert-2',
-        title: 'Earthquake Advisory',
-        description: 'Magnitude 5.4 earthquake detected in Batangas. Expect aftershocks. Check structures for damage.',
-        type: AlertType.naturalDisaster,
-        timestamp: now.subtract(const Duration(hours: 5)),
-        source: 'PHIVOLCS',
-        location: 'Batangas',
-        latitude: 13.7565,
-        longitude: 121.0583,
-        isActive: true,
-      ),
-      EmergencyAlert(
-        id: 'alert-3',
-        title: 'Traffic Accident',
-        description: 'Major traffic accident on EDSA-Kamuning. Multiple vehicles involved. Expect heavy traffic. Use alternative routes.',
+        title: 'Road Blockage at Pasig blvd',
+        description: 'Major road blockage due to construction work. Expect heavy traffic. Find alternative routes.',
         type: AlertType.traffic,
-        timestamp: now.subtract(const Duration(hours: 1)),
+        timestamp: now.subtract(const Duration(hours: 4)),
         source: 'MMDA',
-        location: 'EDSA-Kamuning',
-        latitude: 14.6358,
-        longitude: 121.0388,
-        isActive: true,
-      ),
-      EmergencyAlert(
-        id: 'alert-4',
-        title: 'Typhoon Signal #2',
-        description: 'Typhoon "Maria" intensifies. Signal #2 raised over Metro Manila. Prepare emergency supplies and secure properties.',
-        type: AlertType.weather,
-        timestamp: now.subtract(const Duration(days: 1)),
-        source: 'PAGASA',
-        location: 'Metro Manila',
-        latitude: 14.5995,
-        longitude: 120.9842,
-        isActive: true,
-      ),
-      EmergencyAlert(
-        id: 'alert-5',
-        title: 'Community Safety Alert',
-        description: 'Suspicious activity reported in Barangay San Roque. Increased police patrols in the area. Stay vigilant.',
-        type: AlertType.community,
-        timestamp: now.subtract(const Duration(hours: 12)),
-        source: 'Barangay San Roque',
-        location: 'San Roque, Marikina',
-        latitude: 14.6292,
-        longitude: 121.0952,
+        location: 'Pasig City',
+        latitude: 14.5764,
+        longitude: 121.0851,
         isActive: true,
       ),
     ];
     
     _alerts.addAll(mockAlerts);
+    _notificationService.showAlertNotification(mockAlerts.first);
     _alertsController.add(_alerts);
   }
 
@@ -115,6 +81,14 @@ class AlertService {
     return _alerts.where((alert) => alert.isActive).toList();
   }
 
+  // Get recent alerts
+  List<EmergencyAlert> getRecentAlerts({int limit = 5}) {
+    final sortedAlerts = List<EmergencyAlert>.from(_alerts)
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    
+    return sortedAlerts.take(limit).toList();
+  }
+
   // Add a new alert (for community reports)
   Future<void> addAlert(EmergencyAlert alert) async {
     // In a real app, you would send to an API
@@ -123,6 +97,19 @@ class AlertService {
     
     // Show notification
     _showNotification(alert);
+  }
+
+  // Report a new alert
+  Future<void> reportAlert(EmergencyAlert alert) async {
+    // In a real app, this would send the alert to a server
+    // For now, just add it to our local list
+    _alerts.add(alert);
+    _alertsController.add(_alerts);
+    
+    // Show a notification for the new alert
+    _notificationService.showAlertNotification(alert);
+    
+    return;
   }
 
   // Show notification for an alert

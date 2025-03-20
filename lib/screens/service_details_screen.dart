@@ -19,6 +19,8 @@ class ServiceDetailsScreen extends StatefulWidget {
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   final ApiService _apiService = ApiService();
   late Future<EmergencyService?> _serviceFuture;
+  Color? _appBarColor;
+  Color? _backButtonColor;
 
   @override
   void initState() {
@@ -47,15 +49,19 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Service Details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              // TODO: Implement share functionality
-            },
+        backgroundColor: _appBarColor ?? Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: _backButtonColor ?? Colors.blue),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: _appBarColor != null ? Text(
+          'Service Details',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ) : null,
       ),
       body: FutureBuilder<EmergencyService?>(
         future: _serviceFuture,
@@ -68,21 +74,26 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             return Center(
               child: Text(
                 'Error loading service details: ${snapshot.error}',
-                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
               ),
             );
           }
 
           if (!snapshot.hasData || snapshot.data == null) {
             return const Center(
-              child: Text(
-                'Service not found',
-                textAlign: TextAlign.center,
-              ),
+              child: Text('Service not found'),
             );
           }
 
           final service = snapshot.data!;
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _appBarColor = service.type.color;
+              _backButtonColor = Colors.white;
+            });
+          });
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -94,19 +105,19 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   children: [
                     // Service icon
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
-                        color: service.type.color.withAlpha(38),
-                        borderRadius: BorderRadius.circular(12),
+                        color: service.type.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         _getIconData(service.type),
                         color: service.type.color,
-                        size: 36,
+                        size: 30,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
 
                     // Service name and type
                     Expanded(
@@ -117,7 +128,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                             service.name,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 20,
+                              fontSize: 18,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -125,7 +136,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                             service.level,
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 16,
+                              fontSize: 14,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -133,7 +144,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                             children: [
                               Icon(
                                 Icons.location_on_outlined,
-                                size: 16,
+                                size: 14,
                                 color: Colors.grey[600],
                               ),
                               const SizedBox(width: 4),
@@ -152,27 +163,68 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // Call button
-                if (service.phoneNumber != null)
+                // Call buttons
+                if (service.phoneNumbers.isNotEmpty) ...[
+                  const Text(
+                    'Contact Numbers',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...service.phoneNumbers.map((phone) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _makePhoneCall(phone),
+                        icon: const Icon(Icons.phone, size: 18),
+                        label: Text(phone),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: service.type.color,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                  )).toList(),
+                ] else if (service.phoneNumber != null) ...[
+                  const Text(
+                    'Contact Number',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () => _makePhoneCall(service.phoneNumber!),
-                      icon: const Icon(Icons.phone),
-                      label: const Text('Call Now'),
+                      icon: const Icon(Icons.phone, size: 18),
+                      label: Text(service.phoneNumber!),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: service.type.color,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),
                   ),
-                
+                ],
+
                 const SizedBox(height: 16),
-                
+
                 // Directions button
-                if (service.latitude != null && service.longitude != null)
+                if (service.latitude != null && service.longitude != null) ...[
+                  const Text(
+                    'Directions',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -184,17 +236,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.directions),
+                      icon: const Icon(Icons.directions, size: 18),
                       label: const Text('Get Directions'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: service.type.color,
                         side: BorderSide(color: service.type.color),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),
                   ),
-                
-                const SizedBox(height: 24),
+                ],
+
+                const SizedBox(height: 20),
 
                 // Description
                 if (service.description != null) ...[
@@ -202,91 +255,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     'About',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     service.description!,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 24),
                 ],
-
-                // Location
-                const Text(
-                  'Location',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Map placeholder
-                Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.map,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Map View',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Contact info
-                const Text(
-                  'Contact Information',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                if (service.phoneNumber != null)
-                  _buildContactItem(
-                    icon: Icons.phone,
-                    title: 'Phone',
-                    value: service.phoneNumber!,
-                    onTap: () => _makePhoneCall(service.phoneNumber!),
-                  ),
-
-                const SizedBox(height: 12),
-
-                _buildContactItem(
-                  icon: Icons.location_on,
-                  title: 'Address',
-                  value: 'Tap to get directions',
-                  onTap: () {
-                    // TODO: Implement directions functionality
-                  },
-                ),
-
-                const SizedBox(height: 24),
               ],
             ),
           );
@@ -295,72 +275,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _buildContactItem({
-    required IconData icon,
-    required String title,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.grey[400],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   IconData _getIconData(ServiceType type) {
     switch (type) {
       case ServiceType.police:
         return Icons.local_police;
-      case ServiceType.ambulance:
+      case ServiceType.medical:
         return Icons.medical_services;
-      case ServiceType.firetruck:
+      case ServiceType.fireStation:
         return Icons.local_fire_department;
       case ServiceType.government:
         return Icons.balance;

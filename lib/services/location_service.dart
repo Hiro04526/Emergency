@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class LocationService {
   // Singleton pattern
@@ -7,30 +8,26 @@ class LocationService {
   factory LocationService() => _instance;
   LocationService._internal();
 
-  // Current position
+  // Current position and address
   Position? _currentPosition;
   String? _currentAddress;
 
-  // Getters
-  Position? get currentPosition => _currentPosition;
-  String? get currentAddress => _currentAddress;
-
-  // Stream controllers
+  // Notifiers for reactive UI updates
   final ValueNotifier<Position?> positionNotifier = ValueNotifier<Position?>(null);
   final ValueNotifier<String?> addressNotifier = ValueNotifier<String?>(null);
 
-  // Initialize location service
+  // Initialize the service
   Future<void> initialize() async {
-    await _checkPermission();
+    await _checkLocationPermission();
     await getCurrentPosition();
   }
 
-  // Check if location permission is granted
-  Future<bool> _checkPermission() async {
+  // Check and request location permissions
+  Future<bool> _checkLocationPermission() async {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Test if location services are enabled.
+    // Test if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       // Location services are not enabled
@@ -58,8 +55,7 @@ class LocationService {
   // Get current position
   Future<Position?> getCurrentPosition() async {
     try {
-      final hasPermission = await _checkPermission();
-      
+      final hasPermission = await _checkLocationPermission();
       if (!hasPermission) {
         return null;
       }
@@ -67,7 +63,15 @@ class LocationService {
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      
+
+      // Get address from coordinates
+      if (_currentPosition != null) {
+        await getAddressFromCoordinates(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+        );
+      }
+
       positionNotifier.value = _currentPosition;
       return _currentPosition;
     } catch (e) {
@@ -76,18 +80,53 @@ class LocationService {
     }
   }
 
-  // Get address from coordinates (Geocoding)
-  // This would typically use a geocoding service
+  // Refresh location data
+  Future<void> refreshLocation() async {
+    addressNotifier.value = "Updating location...";
+    await getCurrentPosition();
+  }
+
+  // Get address from coordinates using geocoding
   Future<String?> getAddressFromCoordinates(double latitude, double longitude) async {
-    // Format the coordinates as requested
-    _currentAddress = "Long: $longitude, Lat: $latitude";
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        
+        // Format the address
+        List<String> addressParts = [];
+        
+        if (place.street != null && place.street!.isNotEmpty) {
+          addressParts.add(place.street!);
+        }
+        
+        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+          addressParts.add(place.subLocality!);
+        } else if (place.locality != null && place.locality!.isNotEmpty) {
+          addressParts.add(place.locality!);
+        }
+        
+        if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
+          addressParts.add(place.administrativeArea!);
+        }
+        
+        _currentAddress = addressParts.join(', ');
+      } else {
+        _currentAddress = "Location: $latitude, $longitude";
+      }
+    } catch (e) {
+      debugPrint('Error getting address: $e');
+      _currentAddress = "Location: $latitude, $longitude";
+    }
+    
     addressNotifier.value = _currentAddress;
     return _currentAddress;
   }
 
   // Calculate distance between two coordinates
   double calculateDistance(double startLatitude, double startLongitude, 
-                          double endLatitude, double endLongitude) {
+                         double endLatitude, double endLongitude) {
     return Geolocator.distanceBetween(
       startLatitude, 
       startLongitude, 

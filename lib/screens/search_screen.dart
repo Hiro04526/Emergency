@@ -28,7 +28,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // Variables for search and filter
   bool _isSearchBarVisible = false;
-  final double _maxSearchBarHeight = 280; // Increased height for search panel
+  final double _maxSearchBarHeight = 270; // Decreased height for search panel
 
   // Variables for scroll detection
   final ScrollController _scrollController = ScrollController();
@@ -100,13 +100,53 @@ class _SearchScreenState extends State<SearchScreen> {
     _performSearch();
   }
 
+  void _toggleSearchBar() {
+    setState(() {
+      _isSearchBarVisible = !_isSearchBarVisible;
+    });
+  }
+
+  void _callPhoneNumber(String phoneNumber) {
+    // In a real app, this would use url_launcher to make a phone call
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Calling $phoneNumber...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _navigateToServiceDetails(EmergencyService service) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ServiceDetailsScreen(serviceId: service.id),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: _selectedType!.color,
-        title: Text('Nearest ${_selectedType!.name} Services'),
+        backgroundColor: widget.initialServiceType.color,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        title: _isSearchBarVisible
+            ? null
+            : Text(
+                widget.initialServiceType.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
         actions: [
           IconButton(
             icon: AnimatedSwitcher(
@@ -148,23 +188,10 @@ class _SearchScreenState extends State<SearchScreen> {
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 4.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header with title
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        'Search & Filter',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: _selectedType!.color,
-                        ),
-                      ),
-                    ),
-
                     // Search input
                     TextField(
                       controller: _searchController,
@@ -184,7 +211,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       style: const TextStyle(fontSize: 13),
                       onSubmitted: (_) => _performSearch(),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
 
                     // Filters
                     Row(
@@ -223,7 +250,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
 
                     Row(
                       children: [
@@ -251,7 +278,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
 
                     Row(
                       children: [
@@ -278,7 +305,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
 
                     Row(
                       children: [
@@ -307,7 +334,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 2), // Decreased the white space below the search button
 
                     // Search button and reset filters
                     Row(
@@ -457,92 +484,136 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildServiceItem(EmergencyService service) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ServiceDetailsScreen(serviceId: service.id),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Service header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: service.type.color.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
+              ),
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Service icon
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: service.type.color.withAlpha(38),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
+            child: Row(
+              children: [
+                Icon(
                   _getIconData(service.type),
                   color: service.type.color,
-                  size: 28,
+                  size: 24,
                 ),
-              ),
-              const SizedBox(width: 16),
-
-              // Service details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      service.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        service.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      service.level,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${service.distanceKm.toStringAsFixed(1)} km away',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (service.phoneNumber != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.phone, size: 16, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
                           Text(
-                            service.phoneNumber!,
+                            service.level,
                             style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${service.distanceKm.toStringAsFixed(1)} km away',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
                             ),
                           ),
                         ],
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  child: IconButton(
+                    icon: const Icon(Icons.more_vert, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      _navigateToServiceDetails(service);
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          // Service details
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Phone number button
+                if (service.phoneNumber != null) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.phone_outlined,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _callPhoneNumber(service.phoneNumber!);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: service.type.color,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 0),
+                            minimumSize: const Size(0, 32),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          child: Text(
+                            service.phoneNumber!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -551,9 +622,9 @@ class _SearchScreenState extends State<SearchScreen> {
     switch (type) {
       case ServiceType.police:
         return Icons.local_police;
-      case ServiceType.ambulance:
+      case ServiceType.medical:
         return Icons.medical_services;
-      case ServiceType.firetruck:
+      case ServiceType.fireStation:
         return Icons.local_fire_department;
       case ServiceType.government:
         return Icons.balance;

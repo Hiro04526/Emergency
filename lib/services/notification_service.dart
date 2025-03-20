@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/emergency_alert.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -44,6 +45,15 @@ class NotificationService {
         ),
         margin: const EdgeInsets.all(16),
       ),
+    );
+  }
+
+  void showAlertNotification(EmergencyAlert alert) {
+    showNotification(
+      title: alert.title,
+      message: alert.description,
+      backgroundColor: alert.type.color,
+      duration: const Duration(seconds: 10),
     );
   }
 }
