@@ -503,7 +503,7 @@ class _SearchScreenState extends State<SearchScreen> {
         children: [
           // Service header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.only(left: 12, right: 4, top: 8, bottom: 16),
             decoration: BoxDecoration(
               color: service.type.color.withOpacity(0.1),
               borderRadius: const BorderRadius.only(
@@ -553,16 +553,14 @@ class _SearchScreenState extends State<SearchScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  child: IconButton(
-                    icon: const Icon(Icons.more_vert, size: 20),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () {
-                      _navigateToServiceDetails(service);
-                    },
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    _navigateToServiceDetails(service);
+                  },
                 ),
               ],
             ),
