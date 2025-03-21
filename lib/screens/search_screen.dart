@@ -28,7 +28,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // Variables for search and filter
   bool _isSearchBarVisible = false;
-  final double _maxSearchBarHeight = 270; // Decreased height for search panel
+  final double _maxSearchBarHeight = 240;
 
   // Variables for scroll detection
   final ScrollController _scrollController = ScrollController();
@@ -188,7 +188,7 @@ class _SearchScreenState extends State<SearchScreen> {
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 4.0),
+                padding: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 0.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -334,7 +334,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2), // Decreased the white space below the search button
+                    const SizedBox(height: 2), // Reduced spacing between elements
 
                     // Search button and reset filters
                     Row(
@@ -414,7 +414,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         ? const Center(child: Text('No results found'))
                         : ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                             itemCount: _searchResults.length,
                             itemBuilder: (context, index) {
                               final service = _searchResults[index];
@@ -485,7 +485,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildServiceItem(EmergencyService service) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
