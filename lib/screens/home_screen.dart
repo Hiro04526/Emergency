@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Navbar with location and profile
                 _buildNavbar(),
                 
-                const SizedBox(height: 8),
+                // const SizedBox(height: 8),
                 
                 // Emergency Services Section
                 const Text(
@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavbar() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(top: 8 ),
       child: Row(
         children: [
           Expanded(
