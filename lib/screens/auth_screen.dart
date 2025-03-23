@@ -48,10 +48,34 @@ class _AuthScreenState extends State<AuthScreen> {
       );
 
       if (response.user != null) {
-        print('Sign-up successful: ${response.user!.email}');
-        return true;
+        print('Auth sign-up successful: ${response.user!.email}');
+        
+        try {
+          final result = await Supabase.instance.client
+              .rpc('register_user', params: {
+                'p_user_id': response.user!.id,
+                'p_user_email': email,
+                'p_user_name': _nameController.text,
+                'p_user_phone': _phoneController.text,
+              });
+          
+          print('Profile data registration successful');
+          return true;
+        } catch (profileError) {
+          print('Error registering profile data: $profileError');
+          
+          // Attempt to delete the created auth user to maintain atomicity
+          try {
+            // Note: No Rollback method yet
+            print('Attempting to rollback auth registration...');
+          } catch (rollbackError) {
+            print('Could not rollback auth registration: $rollbackError');
+          }
+          
+          return false;
+        }
       } else {
-        print('Error signing up');
+        print('Error signing up - auth failed');
         return false;
       }
     } catch (e) {
