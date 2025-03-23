@@ -8,8 +8,17 @@ import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/alert_service.dart';
 import 'models/user_profile.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    throw Exception('Error loading .env file: $e');
+  }
+
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize services
@@ -25,6 +34,11 @@ void main() async {
   // Initialize alert service
   final alertService = AlertService();
   alertService.initialize(notificationService);
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!, 
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
   
   runApp(
     MultiProvider(
@@ -78,7 +92,7 @@ class EmergencyServicesApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const HomeScreen(),
+      home: const AuthScreen(),
     );
   }
 }

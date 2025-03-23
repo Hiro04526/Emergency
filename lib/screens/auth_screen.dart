@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({Key? key}) : super(key: key);
@@ -39,16 +40,39 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
-  void _handleSignUp() {
+  Future<bool> signUp(String email, String password) async {
+    try {
+      final response = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      if (response.user != null) {
+        print('Sign-up successful: ${response.user!.email}');
+        return true;
+      } else {
+        print('Error signing up');
+        return false;
+      }
+    } catch (e) {
+        print('Error signing up: $e');
+        return false;
+    }
+  }
+
+
+  void _handleSignUp() async {
     // Print the sign up data to console
     print('Sign Up Data:');
     print('Phone: ${_phoneController.text}');
     print('Email: ${_emailController.text}');
     print('Password: ${_passwordController.text}');
     print('Name: ${_nameController.text}');
+
+    final success = await signUp(_emailController.text, _passwordController.text);
     
     // Navigate to Home screen after signup
-    if (mounted) {
+    if (mounted && success) {
       Navigator.pushReplacement(
         context, 
         MaterialPageRoute(builder: (context) => const HomeScreen())
@@ -56,14 +80,37 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  void _handleLogin() {
+  Future<bool> logIn(String email, String password) async {
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (response.user != null) {
+        print('Login successful: ${response.user!.email}');
+        return true;
+      } else {
+        print('Error logging in');
+        return false;
+      }
+    } catch (e) {
+      print('Error logging in: $e');
+      return false;
+    }
+  }
+
+
+  void _handleLogin() async {
     // Print the login data to console
     print('Login Data:');
     print('Email: ${_emailController.text}');
     print('Password: ${_passwordController.text}');
+
+    final success = await logIn(_emailController.text, _passwordController.text);
     
     // Navigate to Home screen after login
-    if (mounted) {
+    if (mounted && success) {
       Navigator.pushReplacement(
         context, 
         MaterialPageRoute(builder: (context) => const HomeScreen())
