@@ -191,6 +191,117 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Image (if available)
+                if (alert.imageUrl != null) ...[
+                  const Text(
+                    'Image',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[200],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        alert.imageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: alert.type.color,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.broken_image,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Could not load image',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width,
+                              maxHeight: MediaQuery.of(context).size.height * 0.8,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AppBar(
+                                  title: const Text('Alert Image'),
+                                  leading: IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                  backgroundColor: alert.type.color,
+                                ),
+                                Flexible(
+                                  child: InteractiveViewer(
+                                    minScale: 0.5,
+                                    maxScale: 3.0,
+                                    child: Image.network(
+                                      alert.imageUrl!,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Center(
+                                          child: Text('Error loading image'),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.fullscreen),
+                    label: const Text('View Full Image'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: alert.type.color,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
                 // Source
                 if (alert.source != null) ...[
                   const Text(
