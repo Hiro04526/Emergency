@@ -1,0 +1,105 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Class to handle database initialization
+class DatabaseInitializer {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
+  /// Initialize the database schema
+  Future<bool> initializeDatabase() async {
+    try {
+      // Execute the SQL schema creation
+      await _supabase.rpc('init_database_schema', params: {
+        'schema_sql': _databaseSchema,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error initializing database: $e');
+      return false;
+    }
+  }
+
+  /// SQL schema for database initialization
+  static const String _databaseSchema = '''
+-- Drop Tables (in order to avoid foreign key constraint issues)
+DROP TABLE IF EXISTS reported;
+DROP TABLE IF EXISTS contact;
+DROP TABLE IF EXISTS history;
+DROP TABLE IF EXISTS favorite;
+DROP TABLE IF EXISTS alert;
+DROP TABLE IF EXISTS user;
+DROP TABLE IF EXISTS service;
+
+-- Create the service table
+CREATE TABLE service (
+    service_id UUID PRIMARY KEY,
+    name VARCHAR(255),
+    type VARCHAR(100),
+    category VARCHAR(100),
+    address VARCHAR(255),
+    region VARCHAR(100),
+    province VARCHAR(100),
+    city VARCHAR(100),
+    brgy VARCHAR(100),
+    street VARCHAR(255),
+    is_verified BOOLEAN
+);
+
+-- Create the user table
+CREATE TABLE user (
+    user_id UUID PRIMARY KEY,
+    name VARCHAR(255),
+    username VARCHAR(100) UNIQUE,
+    email VARCHAR(255) UNIQUE,
+    password VARCHAR(255),
+    home_location VARCHAR(255)
+);
+
+-- Create the reported table
+CREATE TABLE reported (
+    service_id UUID,
+    FOREIGN KEY (service_id) REFERENCES service(service_id) ON DELETE CASCADE
+);
+
+-- Create the contact table
+CREATE TABLE contact (
+    contact_id UUID PRIMARY KEY,
+    contact_num VARCHAR(20),
+    service_id UUID,
+    FOREIGN KEY (service_id) REFERENCES service(service_id) ON DELETE CASCADE
+);
+
+-- Create the history table
+CREATE TABLE history (
+    history_id UUID PRIMARY KEY,
+    type VARCHAR(10) CHECK (type IN ('Add', 'Edit', 'Verify', 'Report')),
+    user_id UUID,
+    date_modified DATE,
+    service_id UUID,
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES service(service_id) ON DELETE CASCADE
+);
+
+-- Create the favorite table
+CREATE TABLE favorite (
+    favorite_id UUID PRIMARY KEY,
+    location VARCHAR(255),
+    user_id UUID,
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+);
+
+-- Create the alert table
+CREATE TABLE alert (
+    alert_id UUID PRIMARY KEY,
+    type VARCHAR(100),
+    address VARCHAR(255),
+    region VARCHAR(100),
+    province VARCHAR(100),
+    city VARCHAR(100),
+    brgy VARCHAR(100),
+    street VARCHAR(255),
+    user_id UUID,
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+);
+''';
+}

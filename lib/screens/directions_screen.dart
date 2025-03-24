@@ -22,8 +22,6 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
   GoogleMapController? _mapController;
   DirectionsResult? _directionsResult;
-  List<DirectionsResult> _alternativeRoutes = [];
-  int _selectedRouteIndex = 0;
   bool _isLoading = true;
   bool _showAlternativeRoutes = false;
   TravelMode _travelMode = TravelMode.driving;
@@ -103,8 +101,9 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
       // Add alternative routes
       for (var i = 0; i < alternativeRoutes.length; i++) {
-        if (i == 0)
+        if (i == 0) {
           continue; // Skip the first route as it's the same as directionsResult
+        }
 
         polylines.add(
           Polyline(
@@ -119,7 +118,6 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
       setState(() {
         _directionsResult = directionsResult;
-        _alternativeRoutes = alternativeRoutes;
         _markers = markers;
         _polylines = polylines;
         _isLoading = false;

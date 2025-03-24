@@ -40,12 +40,12 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _handleSignUp() {
-    // Print the sign up data to console
-    print('Sign Up Data:');
-    print('Phone: ${_phoneController.text}');
-    print('Email: ${_emailController.text}');
-    print('Password: ${_passwordController.text}');
-    print('Name: ${_nameController.text}');
+    // Log the sign up data to console
+    debugPrint('Sign Up Data:');
+    debugPrint('Phone: ${_phoneController.text}');
+    debugPrint('Email: ${_emailController.text}');
+    debugPrint('Password: ${_passwordController.text}');
+    debugPrint('Name: ${_nameController.text}');
     
     // Navigate to Home screen after signup
     if (mounted) {
@@ -57,10 +57,10 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _handleLogin() {
-    // Print the login data to console
-    print('Login Data:');
-    print('Email: ${_emailController.text}');
-    print('Password: ${_passwordController.text}');
+    // Log the login data to console
+    debugPrint('Login Data:');
+    debugPrint('Email: ${_emailController.text}');
+    debugPrint('Password: ${_passwordController.text}');
     
     // Navigate to Home screen after login
     if (mounted) {
@@ -73,8 +73,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -378,7 +376,7 @@ class _AuthScreenState extends State<AuthScreen> {
           // Government ID selector
           InkWell(
             onTap: () {
-              print('Add government ID tapped');
+              debugPrint('Add government ID tapped');
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

@@ -379,9 +379,9 @@ class _SOSScreenState extends State<SOSScreen>
     switch (type) {
       case ServiceType.police:
         return Icons.local_police;
-      case ServiceType.firetruck:
+      case ServiceType.fireStation:
         return Icons.local_fire_department;
-      case ServiceType.ambulance:
+      case ServiceType.medical:
         return Icons.medical_services;
       case ServiceType.government:
         return Icons.account_balance;

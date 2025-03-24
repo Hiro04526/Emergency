@@ -100,6 +100,8 @@ class _SearchScreenState extends State<SearchScreen> {
     _performSearch();
   }
 
+  // Keeping this method for future implementation
+  // TODO: Implement search bar toggle functionality
   void _toggleSearchBar() {
     setState(() {
       _isSearchBarVisible = !_isSearchBarVisible;

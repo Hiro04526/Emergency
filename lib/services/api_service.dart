@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/emergency_service.dart';
+import 'database_service.dart';
 
 class ApiService {
   // Singleton pattern
@@ -9,6 +10,14 @@ class ApiService {
 
   // Cache for emergency services
   final Map<ServiceType, List<EmergencyService>> _servicesCache = {};
+  
+  // Reference to database service (will be initialized later)
+  DatabaseService? _databaseService;
+  
+  // Set database service
+  void setDatabaseService(DatabaseService databaseService) {
+    _databaseService = databaseService;
+  }
 
   // Get emergency services by type
   Future<List<EmergencyService>> getServicesByType(ServiceType type) async {
@@ -17,13 +26,21 @@ class ApiService {
       return _servicesCache[type]!;
     }
 
-    // In a real app, you would make an actual API call here
-    // For now, we'll return mock data
     try {
-      // Simulate API delay
-      await Future.delayed(const Duration(milliseconds: 800));
+      List<EmergencyService> services;
       
-      final services = _getMockServices(type);
+      // Try to fetch from database if available
+      if (_databaseService != null) {
+        services = await _databaseService!.getServicesByType(type);
+        
+        // If no services found in database, fall back to mock data
+        if (services.isEmpty) {
+          services = _getMockServices(type);
+        }
+      } else {
+        // Fall back to mock data if database service is not available
+        services = _getMockServices(type);
+      }
       
       // Cache the results
       _servicesCache[type] = services;
@@ -31,7 +48,10 @@ class ApiService {
       return services;
     } catch (e) {
       debugPrint('Error fetching services: $e');
-      return [];
+      // Fall back to mock data on error
+      final services = _getMockServices(type);
+      _servicesCache[type] = services;
+      return services;
     }
   }
 
@@ -43,9 +63,18 @@ class ApiService {
     String? category,
     String? classification,
   }) async {
-    // In a real app, you would make an API call with these parameters
-    // For now, we'll filter our mock data
     try {
+      // Try to search using database service if available
+      if (_databaseService != null) {
+        return await _databaseService!.searchServices(
+          query: query,
+          type: type,
+          region: region,
+          city: category, // Using city as category for now
+        );
+      }
+      
+      // Fall back to mock data search if database service is not available
       // Get all services
       List<EmergencyService> allServices = [];
       for (var serviceType in ServiceType.values) {
@@ -82,9 +111,19 @@ class ApiService {
 
   // Get service details by ID
   Future<EmergencyService?> getServiceById(String id) async {
-    // In a real app, you would make an API call to get details for a specific service
-    // For now, we'll search our mock data
     try {
+      // Try to fetch from database if available
+      if (_databaseService != null) {
+        // Get all services and find the one with matching ID
+        final allServices = await _databaseService!.getAllServices();
+        try {
+          return allServices.firstWhere((service) => service.id == id);
+        } catch (e) {
+          // Service not found in database
+        }
+      }
+      
+      // Fall back to mock data if database service is not available or service not found
       // First, check if we need to load any service types
       if (_servicesCache.isEmpty) {
         // Pre-load all service types
@@ -121,6 +160,64 @@ class ApiService {
     } catch (e) {
       debugPrint('Error fetching service details: $e');
       return null;
+    }
+  }
+
+  // Add a new service
+  Future<String?> addService({
+    required String name,
+    required ServiceType type,
+    required String category,
+    required String address,
+    required String region,
+    required String province,
+    required String city,
+    required String barangay,
+    String? street,
+    List<String>? phoneNumbers,
+    double? latitude,
+    double? longitude,
+    String? userId,
+  }) async {
+    try {
+      if (_databaseService != null) {
+        return await _databaseService!.addService(
+          name: name,
+          type: type,
+          category: category,
+          address: address,
+          region: region,
+          province: province,
+          city: city,
+          barangay: barangay,
+          street: street,
+          phoneNumbers: phoneNumbers,
+          latitude: latitude,
+          longitude: longitude,
+          userId: userId,
+        );
+      }
+      
+      // If database service is not available, return null
+      return null;
+    } catch (e) {
+      debugPrint('Error adding service: $e');
+      return null;
+    }
+  }
+
+  // Report a service
+  Future<bool> reportService(String serviceId, String userId) async {
+    try {
+      if (_databaseService != null) {
+        return await _databaseService!.reportService(serviceId);
+      }
+      
+      // If database service is not available, return false
+      return false;
+    } catch (e) {
+      debugPrint('Error reporting service: $e');
+      return false;
     }
   }
 
