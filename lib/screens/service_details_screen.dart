@@ -284,7 +284,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       case ServiceType.fireStation:
         return Icons.local_fire_department;
       case ServiceType.government:
-        return Icons.balance;
+        return Icons.account_balance;
+      default:
+        return Icons.emergency;
     }
   }
 }

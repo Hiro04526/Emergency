@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({Key? key}) : super(key: key);
@@ -42,7 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<bool> signUp(String email, String password) async {
     try {
-      final response = await Supabase.instance.client.auth.signUp(
+      final response = await supabase.Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
       );
@@ -51,7 +51,7 @@ class _AuthScreenState extends State<AuthScreen> {
         print('Auth sign-up successful: ${response.user!.email}');
         
         try {
-          final result = await Supabase.instance.client
+          final result = await supabase.Supabase.instance.client
               .rpc('register_user', params: {
                 'p_user_id': response.user!.id,
                 'p_user_email': email,
@@ -106,7 +106,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<bool> logIn(String email, String password) async {
     try {
-      final response = await Supabase.instance.client.auth.signInWithPassword(
+      final response = await supabase.Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
       );

@@ -8,17 +8,9 @@ import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/alert_service.dart';
 import 'models/user_profile.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 void main() async {
-
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    throw Exception('Error loading .env file: $e');
-  }
-
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize services
@@ -35,9 +27,9 @@ void main() async {
   final alertService = AlertService();
   alertService.initialize(notificationService);
 
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!, 
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  await supabase.Supabase.initialize(
+    url: 'https://aofppzgxmwazyhmzwpgr.supabase.co/',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvZnBwemd4bXdhenlobXp3cGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2NjgzMTYsImV4cCI6MjA1ODI0NDMxNn0.-PvVy-pXJIr69jj_xx32-L27zZhyFjYt8LLjVPX1oh4',
   );
   
   runApp(

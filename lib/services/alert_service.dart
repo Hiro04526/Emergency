@@ -61,7 +61,6 @@ class AlertService {
     ];
     
     _alerts.addAll(mockAlerts);
-    _notificationService.showAlertNotification(mockAlerts.first);
     _alertsController.add(_alerts);
   }
 
