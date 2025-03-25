@@ -7,6 +7,7 @@ import 'services/location_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/alert_service.dart';
+import 'services/auth_service.dart';
 import 'models/user_profile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -40,10 +41,9 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
   
-  // Determine initial route based on session
-  final bool hasSession = Supabase.instance.client.auth.currentSession != null;
-  final Widget initialScreen = hasSession ? const HomeScreen() : const AuthScreen();
-  print('Initial screen: $initialScreen');
+  // Initialize auth service
+  final authService = AuthService();
+  authService.initialize();
   
   runApp(
     MultiProvider(
@@ -52,20 +52,16 @@ void main() async {
         Provider<ApiService>.value(value: apiService),
         Provider<NotificationService>.value(value: notificationService),
         Provider<AlertService>.value(value: alertService),
+        Provider<AuthService>.value(value: authService),
         ChangeNotifierProvider(create: (_) => UserProfileProvider()),
       ],
-      child: EmergencyServicesApp(initialScreen: initialScreen),
+      child: const EmergencyServicesApp(),
     ),
   );
 }
 
 class EmergencyServicesApp extends StatelessWidget {
-  final Widget initialScreen;
-  
-  const EmergencyServicesApp({
-    Key? key, 
-    required this.initialScreen,
-  }) : super(key: key);
+  const EmergencyServicesApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +98,10 @@ class EmergencyServicesApp extends StatelessWidget {
           ),
         ),
       ),
-      home: initialScreen,
+      home: const HomeScreen(),
+      routes: {
+        '/auth': (context) => const AuthScreen(),
+      },
     );
   }
 }

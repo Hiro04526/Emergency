@@ -4,6 +4,8 @@ import 'dart:io';
 import '../models/emergency_alert.dart';
 import '../services/alert_service.dart';
 import '../services/location_service.dart';
+import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
 
 class ReportAlertScreen extends StatefulWidget {
   final AlertType? initialAlertType;
@@ -27,6 +29,7 @@ class _ReportAlertScreenState extends State<ReportAlertScreen> {
   File? _imageFile;
   bool _isSubmitting = false;
   bool _useCurrentLocation = true;
+  bool _initialized = false;
 
   final AlertService _alertService = AlertService();
   final LocationService _locationService = LocationService();
@@ -39,6 +42,29 @@ class _ReportAlertScreenState extends State<ReportAlertScreen> {
       _selectedType = widget.initialAlertType!;
     }
     _initializeLocation();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Check authentication on first load
+    if (!_initialized) {
+      _initialized = true;
+      
+      // Get auth service
+      final authService = Provider.of<AuthService>(context, listen: false);
+      
+      // If not authenticated, show dialog and go back
+      if (!authService.isAuthenticated) {
+        // Need to use post-frame callback to avoid build issues
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          authService.showContributorFeatureDialog(context);
+          // Pop after showing dialog
+          Navigator.of(context).pop();
+        });
+      }
+    }
   }
 
   Future<void> _initializeLocation() async {

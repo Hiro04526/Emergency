@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'home_screen.dart';
+import '../services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -20,10 +22,17 @@ class _AuthScreenState extends State<AuthScreen> {
   // Track current view
   bool _showLogin = true;
   bool _isLoading = false;
+  late AuthService _authService;
   
   @override
   void initState() {
     super.initState();
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _authService = Provider.of<AuthService>(context, listen: false);
   }
 
   @override
@@ -46,52 +55,7 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
-  Future<bool> signUp(String email, String password) async {
-    try {
-      // Sign up with automatic session persistence
-      final response = await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-      );
-
-      if (response.user != null && response.session != null) {
-        print('Auth sign-up successful: ${response.user!.email}');
-        print('Session created and will persist for up to 30 days');
-        
-        try {
-          final result = await Supabase.instance.client
-              .rpc('register_user', params: {
-                'p_user_id': response.user!.id,
-                'p_user_email': email,
-                'p_user_name': _nameController.text,
-                'p_user_phone': _phoneController.text,
-              });
-          
-          print('Profile data registration successful');
-          print('Session expires in 30 days');
-          return true;
-        } catch (profileError) {
-          print('Error registering profile data: $profileError');
-          
-          try {
-            print('Attempting to rollback auth registration...');
-          } catch (rollbackError) {
-            print('Could not rollback auth registration: $rollbackError');
-          }
-          
-          return false;
-        }
-      } else {
-        print('Error signing up - auth failed');
-        return false;
-      }
-    } catch (e) {
-        print('Error signing up: $e');
-        return false;
-    }
-  }
-
-  void _handleSignUp() async {
+  Future<void> _handleSignUp() async {
     setState(() {
       _isLoading = true;
     });
@@ -103,51 +67,52 @@ class _AuthScreenState extends State<AuthScreen> {
     print('Password: ${_passwordController.text}');
     print('Name: ${_nameController.text}');
 
-    final success = await signUp(_emailController.text, _passwordController.text);
-    
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-    
-    // Navigate to Home screen after signup
-    if (mounted && success) {
-      Navigator.pushReplacement(
-        context, 
-        MaterialPageRoute(builder: (context) => const HomeScreen())
-      );
-    }
-  }
-
-  Future<bool> logIn(String email, String password) async {
     try {
-      // Sign in with automatic session persistence
-      final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
+      // Prepare user data for the registerUser function
+      final userData = {
+        'p_user_email': _emailController.text,
+        'p_user_name': _nameController.text,
+        'p_user_phone': _phoneController.text,
+      };
+      
+      // Sign up using the auth service
+      final response = await _authService.signUp(
+        email: _emailController.text,
+        password: _passwordController.text,
+        userData: userData,
       );
-
+      
       if (response.user != null && response.session != null) {
-        // The session is automatically persisted by Supabase
-        final expiryDate = DateTime.fromMillisecondsSinceEpoch(response.session!.expiresAt! * 1000);
-        final now = DateTime.now();
-        final difference = expiryDate.difference(now);
-        
-        print('Login successful: ${response.user!.email}');
-        print('Session will expire in ${difference.inDays} days');
-        return true;
+        if (mounted) {
+          // Success - navigate to Home
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(builder: (context) => const HomeScreen())
+          );
+        }
       } else {
-        print('Error logging in - no valid user or session returned');
-        return false;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sign up failed. Please try again.')),
+          );
+        }
       }
     } catch (e) {
-      print('Error logging in: $e');
-      return false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  void _handleLogin() async {
+  Future<void> _handleLogin() async {
     setState(() {
       _isLoading = true;
     });
@@ -157,20 +122,40 @@ class _AuthScreenState extends State<AuthScreen> {
     print('Email: ${_emailController.text}');
     print('Password: ${_passwordController.text}');
 
-    final success = await logIn(_emailController.text, _passwordController.text);
-    
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-    
-    // Navigate to Home screen after login
-    if (mounted && success) {
-      Navigator.pushReplacement(
-        context, 
-        MaterialPageRoute(builder: (context) => const HomeScreen())
+    try {
+      // Sign in using the auth service
+      final response = await _authService.signIn(
+        email: _emailController.text,
+        password: _passwordController.text,
       );
+      
+      if (response.user != null && response.session != null) {
+        if (mounted) {
+          // Success - navigate to Home
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(builder: (context) => const HomeScreen())
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login failed. Please check your credentials.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
