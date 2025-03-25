@@ -109,12 +109,14 @@ class ServiceCard extends StatelessWidget {
     switch (type) {
       case ServiceType.police:
         return Icons.local_police;
-      case ServiceType.ambulance:
+      case ServiceType.medical:
         return Icons.medical_services;
-      case ServiceType.firetruck:
+      case ServiceType.fireStation:
         return Icons.local_fire_department;
       case ServiceType.government:
-        return Icons.balance;
+        return Icons.account_balance;
+      default:
+        return Icons.emergency;
     }
   }
 }

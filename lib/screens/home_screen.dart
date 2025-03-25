@@ -7,6 +7,8 @@ import 'search_screen.dart';
 import 'user_profile_screen.dart';
 import 'add_emergency_contact_screen.dart';
 import 'report_alert_screen.dart';
+import 'alerts_screen.dart';
+import 'alert_details_screen.dart';
 import '../services/auth_service.dart';
 import 'package:provider/provider.dart';
 
@@ -31,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _loadRecentAlerts() {
     setState(() {
-      _recentAlerts = _alertService.getRecentAlerts(limit: 3);
+      _recentAlerts = _alertService.getRecentAlerts(limit: 10);
     });
   }
 
@@ -39,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: true);
     final bool isAuthenticated = authService.isAuthenticated;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Emergency Services'),
@@ -82,9 +84,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Navbar with location and profile
                 _buildNavbar(),
-                
+
                 // const SizedBox(height: 8),
-                
+
                 // Emergency Services Section
                 const Text(
                   'Emergency Services',
@@ -93,9 +95,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Grid of emergency service buttons
                 GridView.count(
                   shrinkWrap: true,
@@ -108,24 +110,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       .map((type) => _buildServiceButton(type))
                       .toList(),
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Recent Alerts Section
                 _buildRecentAlertsSection(),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Report Alert Button
                 _buildReportAlertButton(),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Add Emergency Contact Section
                 _buildAddEmergencyContactSection(),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Protected Feature Button
                 _buildProtectedFeatureButton(context),
               ],
@@ -138,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavbar() {
     return Container(
-      padding: const EdgeInsets.only(top: 8 ),
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
           Expanded(
@@ -247,135 +249,227 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Recent Alerts',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Recent Alerts',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AlertsScreen(),
+                  ),
+                );
+              },
+              child: const Text('View All'),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _recentAlerts.isEmpty
             ? const Center(
-                child: Text(
-                  'No recent alerts',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20.0),
+                  child: Text(
+                    'No recent alerts',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
               )
-            : Column(
-                children: _recentAlerts.map((alert) {
-                  return _buildAlertItem(alert);
-                }).toList(),
+            : Container(
+                height: 300, // Fixed height for the scrollable container
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Scroll indicator at the top
+                    Container(
+                      width: 50,
+                      height: 4,
+                      margin: const EdgeInsets.only(top: 8, bottom: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[400],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    // Alerts list
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                        itemCount: _recentAlerts.length,
+                        itemBuilder: (context, index) {
+                          return _buildAlertItem(_recentAlerts[index]);
+                        },
+                      ),
+                    ),
+                    // Scroll indicator at the bottom
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.keyboard_arrow_down,
+                              size: 16, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Scroll for more alerts',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
       ],
     );
   }
 
   Widget _buildAlertItem(EmergencyAlert alert) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AlertDetailsScreen(alertId: alert.id),
           ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: alert.type.color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
             ),
-            child: Icon(
-              _getAlertIconData(alert.type),
-              color: alert.type.color,
-              size: 24,
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: alert.type.color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _getAlertIconData(alert.type),
+                color: alert.type.color,
+                size: 24,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  alert.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  alert.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 14,
-                      color: Colors.grey[600],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    alert.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatTimestamp(alert.timestamp),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    alert.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
                     ),
-                    const SizedBox(width: 12),
-                    if (alert.location != null) ...[
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
                       Icon(
-                        Icons.location_on,
+                        Icons.access_time,
                         size: 14,
                         color: Colors.grey[600],
                       ),
                       const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          alert.location!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        _formatTimestamp(alert.timestamp),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      if (alert.location != null) ...[
+                        Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            alert.location!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildReportAlertButton() {
     final authService = Provider.of<AuthService>(context, listen: false);
-    
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -410,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAddEmergencyContactSection() {
     final authService = Provider.of<AuthService>(context, listen: false);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -448,7 +542,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AddEmergencyContactScreen(),
+                          builder: (context) =>
+                              const AddEmergencyContactScreen(),
                         ),
                       );
                     }
@@ -479,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildProtectedFeatureButton(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
     final bool isAuthenticated = authService.isAuthenticated;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       child: Column(
@@ -496,7 +591,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Premium Features',
                 style: TextStyle(
-                  fontSize: 16, 
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: isAuthenticated ? Colors.black : Colors.grey[600],
                 ),
@@ -524,7 +619,8 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: isAuthenticated ? Colors.blue : Colors.grey[300],
-              foregroundColor: isAuthenticated ? Colors.white : Colors.grey[600],
+              foregroundColor:
+                  isAuthenticated ? Colors.white : Colors.grey[600],
               disabledBackgroundColor: Colors.grey[300],
               disabledForegroundColor: Colors.grey[600],
             ),

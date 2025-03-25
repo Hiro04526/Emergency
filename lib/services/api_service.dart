@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/emergency_service.dart';
+import 'database_service.dart';
 
 class ApiService {
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
+
+  // Database service
+  final DatabaseService _databaseService = DatabaseService();
 
   // Cache for emergency services
   final Map<ServiceType, List<EmergencyService>> _servicesCache = {};
@@ -17,21 +21,31 @@ class ApiService {
       return _servicesCache[type]!;
     }
 
-    // In a real app, you would make an actual API call here
-    // For now, we'll return mock data
     try {
-      // Simulate API delay
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Try to get data from the database first
+      final services = await _databaseService.getServicesByType(type);
       
-      final services = _getMockServices(type);
+      // If we got data from the database, cache and return it
+      if (services.isNotEmpty) {
+        _servicesCache[type] = services;
+        return services;
+      }
+      
+      // If no data from database, fall back to mock data
+      debugPrint('No data found in database for ${type.name}, using mock data');
+      final mockServices = _getMockServices(type);
       
       // Cache the results
-      _servicesCache[type] = services;
+      _servicesCache[type] = mockServices;
       
-      return services;
+      return mockServices;
     } catch (e) {
       debugPrint('Error fetching services: $e');
-      return [];
+      
+      // Fall back to mock data on error
+      final mockServices = _getMockServices(type);
+      _servicesCache[type] = mockServices;
+      return mockServices;
     }
   }
 
@@ -43,36 +57,45 @@ class ApiService {
     String? category,
     String? classification,
   }) async {
-    // In a real app, you would make an API call with these parameters
-    // For now, we'll filter our mock data
     try {
+      // Try to search in the database first
+      final services = await _databaseService.searchServices(
+        query: query,
+        type: type,
+        region: region,
+        category: category,
+        classification: classification,
+      );
+      
+      // If we got data from the database, return it
+      if (services.isNotEmpty) {
+        return services;
+      }
+      
+      // If no data from database, fall back to mock data
+      debugPrint('No search results found in database, using mock data');
+      
       // Get all services
       List<EmergencyService> allServices = [];
       for (var serviceType in ServiceType.values) {
-        allServices.addAll(await getServicesByType(serviceType));
+        final services = await getServicesByType(serviceType);
+        allServices.addAll(services);
       }
-
-      // Filter by query
+      
+      // Filter by query if provided
       if (query != null && query.isNotEmpty) {
-        allServices = allServices.where((service) => 
-          service.name.toLowerCase().contains(query.toLowerCase()) ||
-          (service.description != null && 
-           service.description!.toLowerCase().contains(query.toLowerCase()))
-        ).toList();
+        final lowerQuery = query.toLowerCase();
+        allServices = allServices.where((service) {
+          return service.name.toLowerCase().contains(lowerQuery) ||
+              (service.description?.toLowerCase().contains(lowerQuery) ?? false);
+        }).toList();
       }
-
-      // Filter by type
+      
+      // Filter by type if provided
       if (type != null) {
         allServices = allServices.where((service) => service.type == type).toList();
       }
-
-      // Filter by region (simplified for mock data)
-      if (region != null && region.isNotEmpty) {
-        allServices = allServices.where((service) => 
-          service.name.toLowerCase().contains(region.toLowerCase())
-        ).toList();
-      }
-
+      
       return allServices;
     } catch (e) {
       debugPrint('Error searching services: $e');
@@ -80,98 +103,85 @@ class ApiService {
     }
   }
 
-  // Get service details by ID
+  // Get service by ID
   Future<EmergencyService?> getServiceById(String id) async {
-    // In a real app, you would make an API call to get details for a specific service
-    // For now, we'll search our mock data
     try {
-      // First, check if we need to load any service types
-      if (_servicesCache.isEmpty) {
-        // Pre-load all service types
-        for (var type in ServiceType.values) {
-          await getServicesByType(type);
-        }
-      }
-      
-      // Now search through all cached services
+      // Try to get all services from cache first
+      List<EmergencyService> allServices = [];
       for (var services in _servicesCache.values) {
-        try {
-          final service = services.firstWhere(
-            (service) => service.id == id,
-          );
-          return service;
-        } catch (e) {
-          // Service not found in this type, continue to next type
-          continue;
-        }
+        allServices.addAll(services);
       }
       
-      // If we got here, we didn't find the service in any cached data
-      // Let's try to load all service types again in case the cache was incomplete
+      // Look for the service in the cache
+      final cachedService = allServices.where((service) => service.id == id).firstOrNull;
+      if (cachedService != null) {
+        return cachedService;
+      }
+      
+      // If not in cache, try to get all services
       for (var type in ServiceType.values) {
-        final services = _getMockServices(type);
-        for (var service in services) {
-          if (service.id == id) {
-            return service;
-          }
+        final services = await getServicesByType(type);
+        final service = services.where((service) => service.id == id).firstOrNull;
+        if (service != null) {
+          return service;
         }
       }
       
       return null;
     } catch (e) {
-      debugPrint('Error fetching service details: $e');
+      debugPrint('Error getting service by ID: $e');
       return null;
     }
   }
 
-  // Mock data generator
+  // Mock data for emergency services
   List<EmergencyService> _getMockServices(ServiceType type) {
     switch (type) {
       case ServiceType.police:
         return [
           EmergencyService(
             id: 'police-1',
-            name: 'Police Station 15 (Fortune)',
+            name: 'Marikina City Police Station',
             type: ServiceType.police,
             level: 'City/Local Level',
-            description: 'Local police station serving the Fortune area',
-            distanceKm: 1.1,
-            phoneNumber: '(02) 8942 3478',
-            latitude: 14.5547,
-            longitude: 121.0244,
-          ),
-          EmergencyService(
-            id: 'police-2',
-            name: 'Marikina Police Station 9',
-            type: ServiceType.police,
-            level: 'City/Local Level',
-            description: 'Local police station serving Marikina area',
-            distanceKm: 2.6,
-            phoneNumber: '(02) 8942 0572',
+            description: 'Marikina City Police Station is the main police station serving Marikina City. The station is responsible for maintaining law and order, preventing and investigating crimes, and ensuring public safety within the city limits. The station has a team of well-trained police officers ready to respond to emergencies and assist citizens 24/7.',
+            distanceKm: 1.2,
+            phoneNumber: '(02) 8646 2577',
             latitude: 14.6292,
             longitude: 121.0952,
           ),
           EmergencyService(
-            id: 'police-3',
-            name: 'Quezon City Police Station 4',
+            id: 'police-2',
+            name: 'Quezon City Police Station',
             type: ServiceType.police,
             level: 'City/Local Level',
-            description: 'Local police station serving Quezon City area',
-            distanceKm: 3.8,
-            phoneNumber: '(02) 8925 8146',
+            description: 'Quezon City Police Station is the main police station serving Quezon City. The station is responsible for maintaining law and order, preventing and investigating crimes, and ensuring public safety within the city limits. The station has a team of well-trained police officers ready to respond to emergencies and assist citizens 24/7.',
+            distanceKm: 3.5,
+            phoneNumber: '(02) 8925 8326',
             latitude: 14.6760,
             longitude: 121.0437,
           ),
           EmergencyService(
+            id: 'police-3',
+            name: 'Manila Police District',
+            type: ServiceType.police,
+            level: 'City/Local Level',
+            description: 'Manila Police District is the main police district serving the City of Manila. The district is responsible for maintaining law and order, preventing and investigating crimes, and ensuring public safety within the city limits. The district has a team of well-trained police officers ready to respond to emergencies and assist citizens 24/7.',
+            distanceKm: 7.8,
+            phoneNumber: '(02) 8523 3396',
+            latitude: 14.5995,
+            longitude: 120.9842,
+          ),
+          EmergencyService(
             id: 'police-4',
-            name: 'PNP National Headquarters',
+            name: 'National Bureau of Investigation',
             type: ServiceType.police,
             level: 'National Level',
-            description: 'Philippine National Police headquarters',
-            distanceKm: 7.2,
-            phoneNumber: '(02) 8723 0401',
-            latitude: 14.6089,
-            longitude: 121.0193,
+            description: 'The National Bureau of Investigation (NBI) is the primary investigative agency of the Philippine government. The bureau is responsible for handling complex criminal cases, conducting forensic examinations, and providing technical assistance to other law enforcement agencies. The NBI has a team of highly trained agents and specialists ready to handle various types of investigations.',
+            distanceKm: 8.2,
+            phoneNumber: '(02) 8523 8231',
+            latitude: 14.5869,
+            longitude: 120.9830,
           ),
           EmergencyService(
             id: 'police-5',
@@ -222,25 +232,25 @@ class ApiService {
           ),
           EmergencyService(
             id: 'ambulance-4',
-            name: 'St. Luke\'s Medical Center - QC',
+            name: 'St. Luke\'s Medical Center',
             type: ServiceType.medical,
             level: 'Hospital',
             description: 'St. Luke\'s Medical Center in Quezon City is a world-class hospital known for its excellent medical care and advanced facilities. The emergency department is equipped with the latest medical technology and staffed by highly trained emergency medicine specialists. The hospital offers ground and air ambulance services with medical teams capable of providing critical care during transport.',
-            distanceKm: 5.2,
+            distanceKm: 6.2,
             phoneNumber: '(02) 8723 0101',
-            latitude: 14.6167,
-            longitude: 121.0333,
+            latitude: 14.6262,
+            longitude: 121.0247,
           ),
           EmergencyService(
             id: 'ambulance-5',
             name: 'Philippine Red Cross - Marikina Chapter',
             type: ServiceType.medical,
-            level: 'NGO',
+            level: 'Non-Governmental Organization',
             description: 'The Philippine Red Cross Marikina Chapter provides emergency response services including ambulance dispatch, first aid, and disaster relief. Their ambulance services are available 24/7 for medical emergencies and transport of patients. The chapter also conducts regular training for emergency responders and community members in basic life support and first aid.',
-            distanceKm: 2.1,
+            distanceKm: 1.5,
             phoneNumber: '143',
-            latitude: 14.6290,
-            longitude: 121.0950,
+            latitude: 14.6292,
+            longitude: 121.0952,
           ),
           EmergencyService(
             id: 'ambulance-6',
@@ -248,10 +258,10 @@ class ApiService {
             type: ServiceType.medical,
             level: 'Hospital',
             description: 'East Avenue Medical Center is a government hospital providing comprehensive healthcare services to the public. The emergency department operates 24/7 and handles all types of emergencies including trauma, cardiac, and pediatric cases. The hospital has a dedicated ambulance service for patient transport and emergency response within Metro Manila.',
-            distanceKm: 6.8,
+            distanceKm: 7.8,
             phoneNumber: '(02) 8928 0611',
             latitude: 14.6431,
-            longitude: 121.0517,
+            longitude: 121.0429,
           ),
           EmergencyService(
             id: 'ambulance-7',
@@ -302,22 +312,22 @@ class ApiService {
           ),
           EmergencyService(
             id: 'fire-4',
-            name: 'Makati City Fire Station',
+            name: 'Bureau of Fire Protection - National Headquarters',
             type: ServiceType.fireStation,
-            level: 'City/Local Level',
-            description: 'Makati City Fire Station is the main fire station serving Makati City. The station is equipped with modern firefighting equipment and vehicles, including fire trucks, water tankers, and rescue vehicles. The station has a team of well-trained firefighters ready to respond to fire emergencies, rescue operations, and other related incidents 24/7.',
-            distanceKm: 8.9,
-            phoneNumber: '(02) 8818 5150',
-            latitude: 14.5548,
-            longitude: 121.0244,
+            level: 'National Level',
+            description: 'The Bureau of Fire Protection (BFP) National Headquarters oversees all fire protection and prevention services in the Philippines. The bureau is responsible for enforcing fire safety regulations, conducting fire safety inspections, and coordinating firefighting operations nationwide. The headquarters has a team of experienced fire officers and administrators managing fire protection services across the country.',
+            distanceKm: 7.8,
+            phoneNumber: '(02) 8426 0219',
+            latitude: 14.6431,
+            longitude: 121.0429,
           ),
           EmergencyService(
             id: 'fire-5',
-            name: 'Manila City Fire Station',
+            name: 'Manila Fire Station',
             type: ServiceType.fireStation,
             level: 'City/Local Level',
-            description: 'Manila City Fire Station is the main fire station serving Manila City. The station is equipped with modern firefighting equipment and vehicles, including fire trucks, water tankers, and rescue vehicles. The station has a team of well-trained firefighters ready to respond to fire emergencies, rescue operations, and other related incidents 24/7.',
-            distanceKm: 9.7,
+            description: 'Manila Fire Station is the main fire station serving the City of Manila. The station is equipped with modern firefighting equipment and vehicles, including fire trucks, water tankers, and rescue vehicles. The station has a team of well-trained firefighters ready to respond to fire emergencies, rescue operations, and other related incidents 24/7.',
+            distanceKm: 8.5,
             phoneNumber: '(02) 8527 3653',
             latitude: 14.5995,
             longitude: 120.9842,
@@ -330,7 +340,7 @@ class ApiService {
             name: 'Marikina City Hall',
             type: ServiceType.government,
             level: 'City/Local Level',
-            description: 'Marikina City Hall is the seat of the local government of Marikina City. It houses various government offices and services including the Office of the Mayor, City Council, City Health Office, and the Disaster Risk Reduction and Management Office. The City Hall coordinates emergency response efforts during disasters and emergencies in the city.',
+            description: 'Marikina City Hall is the seat of the local government of Marikina City. The city hall houses various government offices and departments responsible for providing public services to the residents of Marikina. The city hall also serves as a coordination center during emergencies and disasters affecting the city.',
             distanceKm: 2.2,
             phoneNumber: '(02) 8646 2360',
             latitude: 14.6292,
@@ -338,47 +348,47 @@ class ApiService {
           ),
           EmergencyService(
             id: 'gov-2',
-            name: 'NDRRMC Operations Center',
+            name: 'Office of Civil Defense - National Disaster Risk Reduction and Management Council',
             type: ServiceType.government,
             level: 'National Level',
-            description: 'The National Disaster Risk Reduction and Management Council (NDRRMC) Operations Center is the central command center for disaster response and management in the Philippines. The center coordinates the national government\'s response to disasters and emergencies, including the deployment of resources and personnel. The center operates 24/7 and is equipped with advanced communication and monitoring systems.',
-            distanceKm: 7.5,
+            description: 'The Office of Civil Defense (OCD) serves as the implementing arm of the National Disaster Risk Reduction and Management Council (NDRRMC). The office is responsible for coordinating disaster preparedness, prevention, mitigation, response, and rehabilitation efforts at the national level. The OCD operates the National Disaster Risk Reduction and Management Operations Center, which monitors and responds to disasters and emergencies nationwide.',
+            distanceKm: 6.5,
             phoneNumber: '(02) 8911 1406',
-            latitude: 14.6352,
-            longitude: 121.0724,
+            latitude: 14.6431,
+            longitude: 121.0429,
           ),
           EmergencyService(
             id: 'gov-3',
-            name: 'MMDA Metrobase',
+            name: 'Department of Social Welfare and Development - National Resource Operations Center',
             type: ServiceType.government,
-            level: 'Metropolitan Level',
-            description: 'The Metropolitan Manila Development Authority (MMDA) Metrobase is the command center for traffic management and emergency response in Metro Manila. The center coordinates the MMDA\'s response to traffic incidents, floods, and other emergencies in the metropolis. The center operates 24/7 and is equipped with CCTV cameras and communication systems for monitoring and coordination.',
-            distanceKm: 6.3,
-            phoneNumber: '136',
-            latitude: 14.5889,
-            longitude: 121.0514,
+            level: 'National Level',
+            description: 'The Department of Social Welfare and Development (DSWD) National Resource Operations Center is responsible for managing and distributing relief goods and providing social services during disasters and emergencies. The center coordinates with local government units and other agencies to ensure timely and efficient delivery of assistance to affected communities.',
+            distanceKm: 7.2,
+            phoneNumber: '(02) 8931 8101',
+            latitude: 14.6431,
+            longitude: 121.0429,
           ),
           EmergencyService(
             id: 'gov-4',
-            name: 'DSWD Central Office',
+            name: 'Philippine Atmospheric, Geophysical and Astronomical Services Administration',
             type: ServiceType.government,
             level: 'National Level',
-            description: 'The Department of Social Welfare and Development (DSWD) Central Office coordinates social welfare and relief operations during disasters and emergencies. The department provides food, shelter, and other basic necessities to affected populations. The DSWD also operates the Quick Response Team for immediate response to emergencies.',
-            distanceKm: 8.1,
-            phoneNumber: '(02) 8931 8101',
-            latitude: 14.6417,
-            longitude: 121.0500,
+            description: 'The Philippine Atmospheric, Geophysical and Astronomical Services Administration (PAGASA) is the national meteorological and hydrological service provider of the Philippines. PAGASA is responsible for providing weather forecasts, warnings, and advisories for public safety and disaster preparedness. The agency operates weather stations and monitoring systems across the country to track weather patterns and natural hazards.',
+            distanceKm: 8.0,
+            phoneNumber: '(02) 8926 4258',
+            latitude: 14.6431,
+            longitude: 121.0429,
           ),
           EmergencyService(
             id: 'gov-5',
-            name: 'DOH Central Office',
+            name: 'Philippine Institute of Volcanology and Seismology',
             type: ServiceType.government,
             level: 'National Level',
-            description: 'The Department of Health (DOH) Central Office coordinates health emergency response and management in the Philippines. The department provides medical assistance, supplies, and personnel during health emergencies and disasters. The DOH also operates the Health Emergency Management Bureau for immediate response to health emergencies.',
-            distanceKm: 7.8,
-            phoneNumber: '(02) 8651 7800',
-            latitude: 14.6417,
-            longitude: 121.0500,
+            description: 'The Philippine Institute of Volcanology and Seismology (PHIVOLCS) is the government agency responsible for monitoring and studying volcanic activities and earthquakes in the Philippines. PHIVOLCS provides warnings and advisories on volcanic eruptions, earthquakes, and tsunamis to help protect communities from these natural hazards. The institute operates a network of monitoring stations across the country to detect and analyze seismic and volcanic activities.',
+            distanceKm: 8.1,
+            phoneNumber: '(02) 8426 1468',
+            latitude: 14.6431,
+            longitude: 121.0429,
           ),
         ];
     }

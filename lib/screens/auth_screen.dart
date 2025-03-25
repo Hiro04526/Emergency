@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'home_screen.dart';
 import '../services/auth_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({Key? key}) : super(key: key);
@@ -23,12 +23,12 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _showLogin = true;
   bool _isLoading = false;
   late AuthService _authService;
-  
+
   @override
   void initState() {
     super.initState();
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -55,54 +55,51 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
-  Future<void> _handleSignUp() async {
+  Future<bool> signUp(String email, String password) async {
     setState(() {
       _isLoading = true;
     });
     
-    // Print the sign up data to console
-    print('Sign Up Data:');
-    print('Phone: ${_phoneController.text}');
-    print('Email: ${_emailController.text}');
-    print('Password: ${_passwordController.text}');
-    print('Name: ${_nameController.text}');
-
     try {
-      // Prepare user data for the registerUser function
-      final userData = {
-        'p_user_email': _emailController.text,
-        'p_user_name': _nameController.text,
-        'p_user_phone': _phoneController.text,
-      };
-      
-      // Sign up using the auth service
-      final response = await _authService.signUp(
-        email: _emailController.text,
-        password: _passwordController.text,
-        userData: userData,
+      final response = await supabase.Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
       );
-      
-      if (response.user != null && response.session != null) {
-        if (mounted) {
-          // Success - navigate to Home
-          Navigator.pushReplacement(
-            context, 
-            MaterialPageRoute(builder: (context) => const HomeScreen())
-          );
+
+      if (response.user != null) {
+        print('Auth sign-up successful: ${response.user!.email}');
+        
+        try {
+          final result = await supabase.Supabase.instance.client
+              .rpc('register_user', params: {
+                'p_user_id': response.user!.id,
+                'p_user_email': email,
+                'p_user_name': _nameController.text,
+                'p_user_phone': _phoneController.text,
+              });
+          
+          print('Profile data registration successful');
+          return true;
+        } catch (profileError) {
+          print('Error registering profile data: $profileError');
+          
+          // Attempt to delete the created auth user to maintain atomicity
+          try {
+            // Note: No Rollback method yet
+            print('Attempting to rollback auth registration...');
+          } catch (rollbackError) {
+            print('Could not rollback auth registration: $rollbackError');
+          }
+          
+          return false;
         }
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sign up failed. Please try again.')),
-          );
-        }
+        print('Error signing up - auth failed');
+        return false;
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
+        print('Error signing up: $e');
+        return false;
     } finally {
       if (mounted) {
         setState(() {
@@ -116,7 +113,7 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() {
       _isLoading = true;
     });
-    
+
     // Print the login data to console
     print('Login Data:');
     print('Email: ${_emailController.text}');
@@ -162,7 +159,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
-    
+
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -173,7 +170,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       );
     }
-    
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -198,23 +195,36 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: _showLogin ? _buildLoginForm() : _buildSignUpForm(),
               ),
             ),
-            
+
             // Bottom navigation buttons
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: SizedBox(
                 width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: _toggleView,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    side: const BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _showLogin
+                          ? "Don't have an account? "
+                          : "Already have an account? ",
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  child: Text(_showLogin ? 'Sign up' : 'Log in'),
+                    GestureDetector(
+                      onTap: _toggleView,
+                      child: Text(
+                        _showLogin ? 'Sign Up' : 'Login',
+                        style: TextStyle(
+                          color: const Color(0xFF2979FF),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -263,7 +273,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           const SizedBox(height: 48),
-          
+
           // Email field
           const Text(
             'Email',
@@ -284,11 +294,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Password field
           const Text(
             'Password',
@@ -309,11 +320,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Login button in form
           SizedBox(
             width: double.infinity,
@@ -374,7 +386,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           const SizedBox(height: 48),
-          
+
           // Phone Number field
           const Text(
             'Phone Number',
@@ -395,11 +407,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Email field
           const Text(
             'Email',
@@ -420,11 +433,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Password field
           const Text(
             'Password',
@@ -445,11 +459,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Name field
           const Text(
             'Name',
@@ -469,11 +484,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               filled: true,
               fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Government ID selector
           InkWell(
             onTap: () {
@@ -509,13 +525,30 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Sign Up button in form
           SizedBox(
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: _handleSignUp,
+              onPressed: _isLoading 
+                ? null 
+                : () async {
+                  final success = await signUp(
+                    _emailController.text, 
+                    _passwordController.text
+                  );
+                  if (success && mounted) {
+                    Navigator.pushReplacement(
+                      context, 
+                      MaterialPageRoute(builder: (context) => const HomeScreen())
+                    );
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Sign up failed. Please try again.')),
+                    );
+                  }
+                },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2979FF),
                 foregroundColor: Colors.white,
@@ -530,4 +563,4 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
     );
   }
-} 
+}
