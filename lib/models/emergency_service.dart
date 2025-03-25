@@ -70,6 +70,33 @@ class EmergencyService {
     this.longitude,
   }) : phoneNumbers = phoneNumbers ?? (phoneNumber != null ? [phoneNumber] : []);
 
+  // Create a copy with modified properties
+  EmergencyService copyWith({
+    String? id,
+    String? name,
+    ServiceType? type,
+    String? level,
+    String? description,
+    double? distanceKm,
+    String? phoneNumber,
+    List<String>? phoneNumbers,
+    double? latitude,
+    double? longitude,
+  }) {
+    return EmergencyService(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      level: level ?? this.level,
+      description: description ?? this.description,
+      distanceKm: distanceKm ?? this.distanceKm,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      phoneNumbers: phoneNumbers ?? this.phoneNumbers,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+    );
+  }
+
   factory EmergencyService.fromJson(Map<String, dynamic> json) {
     List<String>? phoneNumbersList;
     
@@ -94,17 +121,29 @@ class EmergencyService {
       serviceType = ServiceType.police;
     }
     
+    // Handle distance_km which might be null or a different type
+    double distanceKm = 0.0;
+    if (json['distance_km'] != null) {
+      if (json['distance_km'] is double) {
+        distanceKm = json['distance_km'];
+      } else if (json['distance_km'] is int) {
+        distanceKm = (json['distance_km'] as int).toDouble();
+      } else if (json['distance_km'] is String) {
+        distanceKm = double.tryParse(json['distance_km']) ?? 0.0;
+      }
+    }
+    
     return EmergencyService(
-      id: json['id'],
-      name: json['name'],
+      id: json['id'] ?? '',
+      name: json['name'] ?? 'Unknown Service',
       type: serviceType,
-      level: json['level'],
+      level: json['level'] ?? 'Standard',
       description: json['description'],
-      distanceKm: json['distance_km'],
+      distanceKm: distanceKm,
       phoneNumber: json['phone_number'],
       phoneNumbers: phoneNumbersList ?? (json['phone_number'] != null ? [json['phone_number']] : []),
-      latitude: json['latitude'],
-      longitude: json['longitude'],
+      latitude: json['latitude'] is double ? json['latitude'] : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
+      longitude: json['longitude'] is double ? json['longitude'] : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
     );
   }
 }

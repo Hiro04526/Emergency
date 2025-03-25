@@ -29,11 +29,11 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-
+    
     // Set initial service type from the required parameter
     _selectedType = widget.initialServiceType;
-
-    // Perform search automatically with the provided service type
+    
+    // Perform initial search once the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _performSearch();
     });
@@ -48,19 +48,49 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _performSearch() async {
     setState(() {
       _isLoading = true;
+      _searchResults = []; // Clear previous results
     });
 
+    debugPrint('Starting search for service type: ${_selectedType?.name}');
+
     try {
-      // Only search by type now, no other filters
+      // First try to search by type
       final results = await _databaseService.searchServices(
         type: _selectedType!, // This is always non-null since it's required
       );
+
+      debugPrint('Search completed. Found ${results.length} results');
+      
+      if (results.isEmpty) {
+        debugPrint('No results found from database, checking if database has any services');
+        
+        // If no results, check if there are any services in the database at all
+        final allServices = await _databaseService.getAllServices();
+        
+        if (allServices.isEmpty) {
+          debugPrint('Database appears to be empty, showing error state');
+          // Database might be empty or not properly initialized
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No services found in the database. Please check your connection.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          debugPrint('Database has services but none match the current filter');
+        }
+      } else {
+        debugPrint('First result: ${results.first.name}');
+      }
 
       setState(() {
         _searchResults = results;
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Error in search: $e');
       setState(() {
         _searchResults = [];
         _isLoading = false;

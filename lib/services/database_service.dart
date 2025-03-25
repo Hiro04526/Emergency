@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
+import 'location_service.dart';
 
 class DatabaseService {
   // Singleton pattern
@@ -16,22 +17,45 @@ class DatabaseService {
   Future<List<EmergencyService>> getServicesByType(ServiceType type) async {
     try {
       final typeString = _getTypeString(type);
-      
+
       final response = await _client
           .from('service')
           .select()
           .eq('type', typeString)
           .order('name');
-      
+
       if (response.isEmpty) {
         return [];
       }
-      
-      return response
-          .map((data) => EmergencyService.fromJson(data))
-          .toList();
+
+      return response.map((data) => EmergencyService.fromJson(data)).toList();
     } catch (e) {
       debugPrint('Error fetching services: $e');
+      return [];
+    }
+  }
+
+  // Get all emergency services
+  Future<List<EmergencyService>> getAllServices() async {
+    try {
+      debugPrint('Fetching all services from database');
+      final response = await _client
+          .from('service')
+          .select()
+          .order('name');
+
+      debugPrint('All services response: ${response.toString()}');
+
+      if (response.isEmpty) {
+        debugPrint('No services found in database');
+        return [];
+      }
+
+      final services = response.map((data) => EmergencyService.fromJson(data)).toList();
+      debugPrint('Found ${services.length} total services');
+      return services;
+    } catch (e) {
+      debugPrint('Error fetching all services: $e');
       return [];
     }
   }
@@ -45,40 +69,101 @@ class DatabaseService {
     String? classification,
   }) async {
     try {
+      debugPrint('Searching services with type: ${type?.name}');
       var request = _client.from('service').select();
-      
+
       if (type != null) {
-        request = request.eq('type', _getTypeString(type));
+        final typeString = _getTypeString(type);
+        debugPrint('Converted type to string: $typeString');
+        // Use ilike for more flexible matching instead of exact equality
+        request = request.ilike('type', '%$typeString%');
       }
-      
+
       if (query != null && query.isNotEmpty) {
         request = request.or('name.ilike.%$query%,description.ilike.%$query%');
       }
-      
+
       if (region != null && region.isNotEmpty) {
         request = request.eq('region', region);
       }
-      
+
       if (category != null && category.isNotEmpty) {
         request = request.eq('category', category);
       }
-      
+
       if (classification != null && classification.isNotEmpty) {
         request = request.eq('classification', classification);
       }
-      
+
       final response = await request.order('name');
-      
+      debugPrint('Search response: ${response.toString()}');
+
       if (response.isEmpty) {
+        debugPrint('No results found in search');
+        // Let's try a fallback search without type filtering if we get no results
+        if (type != null) {
+          debugPrint('Attempting fallback search without type filter');
+          final allServices = await getAllServices();
+          
+          if (allServices.isNotEmpty) {
+            debugPrint('Filtering ${allServices.length} services by type: ${type.name}');
+            // Filter results on the client side based on type
+            final filteredResults = allServices.where((service) => 
+                service.type == type || 
+                service.name.toLowerCase().contains(_getTypeString(type).toLowerCase()) ||
+                (service.description?.toLowerCase() ?? '').contains(_getTypeString(type).toLowerCase())
+            ).toList();
+            
+            if (filteredResults.isNotEmpty) {
+              debugPrint('Filtered results: ${filteredResults.length}');
+              return _calculateDistances(filteredResults);
+            }
+          }
+        }
         return [];
       }
-      
-      return response
-          .map((data) => EmergencyService.fromJson(data))
-          .toList();
+
+      final services = response.map((data) => EmergencyService.fromJson(data)).toList();
+      debugPrint('Found ${services.length} services');
+      return _calculateDistances(services);
     } catch (e) {
       debugPrint('Error searching services: $e');
       return [];
+    }
+  }
+  
+  // Helper method to calculate distances for services
+  Future<List<EmergencyService>> _calculateDistances(List<EmergencyService> services) async {
+    try {
+      // Get the current location
+      final locationService = LocationService();
+      final position = await locationService.getCurrentPosition();
+      
+      if (position != null) {
+        debugPrint('Calculating distances from current location: ${position.latitude}, ${position.longitude}');
+        
+        // Calculate distance for each service
+        return services.map((service) {
+          if (service.latitude != null && service.longitude != null) {
+            final distance = locationService.calculateDistance(
+              position.latitude,
+              position.longitude,
+              service.latitude!,
+              service.longitude!
+            );
+            
+            // Return a new service with the calculated distance
+            return service.copyWith(distanceKm: distance);
+          }
+          return service;
+        }).toList();
+      } else {
+        debugPrint('Current location not available, using default distances');
+        return services;
+      }
+    } catch (e) {
+      debugPrint('Error calculating distances: $e');
+      return services;
     }
   }
 
@@ -89,14 +174,12 @@ class DatabaseService {
           .from('alert')
           .select()
           .order('timestamp', ascending: false);
-      
+
       if (response.isEmpty) {
         return [];
       }
-      
-      return response
-          .map((data) => _parseAlert(data))
-          .toList();
+
+      return response.map((data) => _parseAlert(data)).toList();
     } catch (e) {
       debugPrint('Error fetching alerts: $e');
       return [];
@@ -116,7 +199,7 @@ class DatabaseService {
         'longitude': alert.longitude,
         'is_active': alert.isActive,
       });
-      
+
       return true;
     } catch (e) {
       debugPrint('Error adding alert: $e');
@@ -132,7 +215,7 @@ class DatabaseService {
         'reason': reason,
         'timestamp': DateTime.now().toIso8601String(),
       });
-      
+
       return true;
     } catch (e) {
       debugPrint('Error reporting service: $e');
@@ -145,14 +228,14 @@ class DatabaseService {
     try {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return false;
-      
+
       await _client.from('history').insert({
         'user_id': userId,
         'service_id': serviceId,
         'action': action,
         'timestamp': DateTime.now().toIso8601String(),
       });
-      
+
       return true;
     } catch (e) {
       debugPrint('Error adding to history: $e');
@@ -180,19 +263,20 @@ class DatabaseService {
   EmergencyAlert _parseAlert(Map<String, dynamic> data) {
     AlertType alertType;
     final typeString = data['type']?.toString().toLowerCase() ?? '';
-    
+
     if (typeString.contains('traffic')) {
       alertType = AlertType.traffic;
     } else if (typeString.contains('weather')) {
       alertType = AlertType.weather;
     } else if (typeString.contains('community')) {
       alertType = AlertType.community;
-    } else if (typeString.contains('natural') || typeString.contains('disaster')) {
+    } else if (typeString.contains('natural') ||
+        typeString.contains('disaster')) {
       alertType = AlertType.naturalDisaster;
     } else {
       alertType = AlertType.emergency;
     }
-    
+
     return EmergencyAlert(
       id: data['id'],
       title: data['title'],
