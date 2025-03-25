@@ -40,36 +40,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: true);
-    final bool isAuthenticated = authService.isAuthenticated;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Emergency Services'),
         actions: [
-          if (isAuthenticated)
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () async {
-                try {
-                  await authService.signOut();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Logged out successfully')),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error signing out: $e')),
-                    );
-                  }
-                }
-              },
-            ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.person_outline),
             onPressed: () {
-              // Navigate to settings
+              // Check if user is authenticated
+              if (authService.isAuthenticated) {
+                // Navigate to profile screen if authenticated
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UserProfileScreen(),
+                  ),
+                );
+              } else {
+                // Show login dialog if not authenticated
+                authService.showAuthRequiredDialog(context);
+              }
             },
           ),
         ],
@@ -127,9 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildAddEmergencyContactSection(),
 
                 const SizedBox(height: 12),
-
-                // Protected Feature Button
-                _buildProtectedFeatureButton(context),
               ],
             ),
           ),
@@ -139,8 +127,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNavbar() {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    
     return Container(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
@@ -183,24 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () {
-              // Check if user is authenticated
-              if (authService.isAuthenticated) {
-                // Navigate to profile screen if authenticated
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const UserProfileScreen(),
-                  ),
-                );
-              } else {
-                // Show login dialog if not authenticated
-                authService.showAuthRequiredDialog(context);
-              }
-            },
           ),
         ],
       ),
@@ -577,66 +545,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildProtectedFeatureButton(BuildContext context) {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final bool isAuthenticated = authService.isAuthenticated;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isAuthenticated ? Icons.lock_open : Icons.lock,
-                color: isAuthenticated ? Colors.green : Colors.grey,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Premium Features',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isAuthenticated ? Colors.black : Colors.grey[600],
-                ),
-              ),
-              const Spacer(),
-              if (!isAuthenticated)
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushNamed('/auth');
-                  },
-                  child: const Text('Log In'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: () {
-              if (authService.canAccessAuthFeature(context)) {
-                // This code only executes if the user is authenticated
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Accessing protected feature!')),
-                );
-                // Navigate to the protected feature or perform protected action
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isAuthenticated ? Colors.blue : Colors.grey[300],
-              foregroundColor:
-                  isAuthenticated ? Colors.white : Colors.grey[600],
-              disabledBackgroundColor: Colors.grey[300],
-              disabledForegroundColor: Colors.grey[600],
-            ),
-            child: const Text('Access Premium Feature'),
-          ),
-        ],
-      ),
     );
   }
 

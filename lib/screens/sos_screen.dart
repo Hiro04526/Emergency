@@ -164,8 +164,9 @@ class _SOSScreenState extends State<SOSScreen>
   }
 
   Future<void> _callEmergencyService(EmergencyService service) async {
-    if (service.phoneNumber != null) {
-      final uri = Uri.parse('tel:${service.phoneNumber}');
+    if (service.contacts.isNotEmpty) {
+      // Use the first contact in the list
+      final uri = Uri.parse('tel:${service.contacts[0]}');
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       } else {
@@ -176,6 +177,27 @@ class _SOSScreenState extends State<SOSScreen>
             ),
           );
         }
+      }
+    } else if (service.contact != null) {
+      final uri = Uri.parse('tel:${service.contact}');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not call ${service.name}'),
+            ),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No contact number available for ${service.name}'),
+          ),
+        );
       }
     }
   }

@@ -28,7 +28,50 @@ class DatabaseService {
         return [];
       }
 
-      return response.map((data) => EmergencyService.fromJson(data)).toList();
+      // Get the list of service IDs
+      final serviceIds = response.map<String>((data) => data['id'].toString()).toList();
+      
+      // Map to store contacts for each service
+      final Map<String, List<String>> serviceContacts = {};
+      
+      try {
+        // Fetch contact numbers for these services
+        final contactsResponse = await _client
+            .from('contact')
+            .select()
+            .inFilter('service_id', serviceIds);
+            
+        debugPrint('Found ${contactsResponse.length} contacts for ${serviceIds.length} services');
+        
+        // Create a map of service ID to list of phone numbers
+        for (var contact in contactsResponse) {
+          final serviceId = contact['service_id'].toString();
+          final phoneNumber = contact['phone_number']?.toString();
+          
+          if (phoneNumber != null && phoneNumber.isNotEmpty) {
+            if (!serviceContacts.containsKey(serviceId)) {
+              serviceContacts[serviceId] = [];
+            }
+            serviceContacts[serviceId]!.add(phoneNumber);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching contacts, will use contact from service table: $e');
+        // If the contact table doesn't exist, we'll just use the contact from the service table
+      }
+      
+      // Create emergency services with contact numbers
+      return response.map((data) {
+        final serviceId = data['id'].toString();
+        // Add the contact numbers to the service data before creating the object
+        if (serviceContacts.containsKey(serviceId)) {
+          data['contacts'] = serviceContacts[serviceId];
+        } else if (data['contact'] != null && data['contact'].toString().isNotEmpty) {
+          // If we don't have contacts from the contact table, use the contact from the service table
+          data['contacts'] = [data['contact'].toString()];
+        }
+        return EmergencyService.fromJson(data);
+      }).toList();
     } catch (e) {
       debugPrint('Error fetching services: $e');
       return [];
@@ -51,7 +94,51 @@ class DatabaseService {
         return [];
       }
 
-      final services = response.map((data) => EmergencyService.fromJson(data)).toList();
+      // Get the list of service IDs
+      final serviceIds = response.map<String>((data) => data['id'].toString()).toList();
+      
+      // Map to store contacts for each service
+      final Map<String, List<String>> serviceContacts = {};
+      
+      try {
+        // Fetch contact numbers for these services
+        final contactsResponse = await _client
+            .from('contact')
+            .select()
+            .inFilter('service_id', serviceIds);
+            
+        debugPrint('Found ${contactsResponse.length} contacts for ${serviceIds.length} services');
+        
+        // Create a map of service ID to list of phone numbers
+        for (var contact in contactsResponse) {
+          final serviceId = contact['service_id'].toString();
+          final phoneNumber = contact['phone_number']?.toString();
+          
+          if (phoneNumber != null && phoneNumber.isNotEmpty) {
+            if (!serviceContacts.containsKey(serviceId)) {
+              serviceContacts[serviceId] = [];
+            }
+            serviceContacts[serviceId]!.add(phoneNumber);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching contacts, will use contact from service table: $e');
+        // If the contact table doesn't exist, we'll just use the contact from the service table
+      }
+      
+      // Create emergency services with contact numbers
+      final services = response.map((data) {
+        final serviceId = data['id'].toString();
+        // Add the contact numbers to the service data before creating the object
+        if (serviceContacts.containsKey(serviceId)) {
+          data['contacts'] = serviceContacts[serviceId];
+        } else if (data['contact'] != null && data['contact'].toString().isNotEmpty) {
+          // If we don't have contacts from the contact table, use the contact from the service table
+          data['contacts'] = [data['contact'].toString()];
+        }
+        return EmergencyService.fromJson(data);
+      }).toList();
+      
       debugPrint('Found ${services.length} total services');
       return services;
     } catch (e) {
@@ -67,6 +154,7 @@ class DatabaseService {
     String? region,
     String? category,
     String? classification,
+    String? contact,
   }) async {
     try {
       debugPrint('Searching services with type: ${type?.name}');
@@ -93,6 +181,10 @@ class DatabaseService {
 
       if (classification != null && classification.isNotEmpty) {
         request = request.eq('classification', classification);
+      }
+
+      if (contact != null && contact.isNotEmpty) {
+        request = request.eq('contact', contact);
       }
 
       final response = await request.order('name');
@@ -123,8 +215,52 @@ class DatabaseService {
         return [];
       }
 
-      final services = response.map((data) => EmergencyService.fromJson(data)).toList();
-      debugPrint('Found ${services.length} services');
+      // Get the list of service IDs
+      final serviceIds = response.map<String>((data) => data['id'].toString()).toList();
+      
+      // Map to store contacts for each service
+      final Map<String, List<String>> serviceContacts = {};
+      
+      try {
+        // Fetch contact numbers for these services
+        final contactsResponse = await _client
+            .from('contact')
+            .select()
+            .inFilter('service_id', serviceIds);
+            
+        debugPrint('Found ${contactsResponse.length} contacts for ${serviceIds.length} services in search results');
+        
+        // Create a map of service ID to list of phone numbers
+        for (var contact in contactsResponse) {
+          final serviceId = contact['service_id'].toString();
+          final phoneNumber = contact['phone_number']?.toString();
+          
+          if (phoneNumber != null && phoneNumber.isNotEmpty) {
+            if (!serviceContacts.containsKey(serviceId)) {
+              serviceContacts[serviceId] = [];
+            }
+            serviceContacts[serviceId]!.add(phoneNumber);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching contacts, will use contact from service table: $e');
+        // If the contact table doesn't exist, we'll just use the contact from the service table
+      }
+      
+      // Create emergency services with contact numbers
+      final services = response.map((data) {
+        final serviceId = data['id'].toString();
+        // Add the contact numbers to the service data before creating the object
+        if (serviceContacts.containsKey(serviceId)) {
+          data['contacts'] = serviceContacts[serviceId];
+        } else if (data['contact'] != null && data['contact'].toString().isNotEmpty) {
+          // If we don't have contacts from the contact table, use the contact from the service table
+          data['contacts'] = [data['contact'].toString()];
+        }
+        return EmergencyService.fromJson(data);
+      }).toList();
+      
+      debugPrint('Found ${services.length} services in search');
       return _calculateDistances(services);
     } catch (e) {
       debugPrint('Error searching services: $e');

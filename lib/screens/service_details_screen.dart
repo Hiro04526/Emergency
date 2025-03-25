@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/emergency_service.dart';
 import '../services/api_service.dart';
-import 'directions_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final String serviceId;
+  final EmergencyService? service;
 
   const ServiceDetailsScreen({
     Key? key,
     required this.serviceId,
+    this.service,
   }) : super(key: key);
 
   @override
@@ -25,21 +26,61 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _serviceFuture = _apiService.getServiceById(widget.serviceId);
+    debugPrint('ServiceDetailsScreen: Loading service with ID: ${widget.serviceId}');
+    
+    // If a service object was passed, use it directly
+    if (widget.service != null) {
+      _serviceFuture = Future.value(widget.service);
+    } else {
+      // Otherwise try to fetch it by ID
+      _serviceFuture = _apiService.getServiceById(widget.serviceId);
+    }
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phoneNumber,
-    );
-
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    } else {
+    // Format the phone number by removing any non-digit characters except +
+    final String formattedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    
+    try {
+      // Try different URI formats
+      final List<String> uriFormats = [
+        'tel:$formattedNumber',
+        'tel://$formattedNumber',
+        'voicemail:$formattedNumber'
+      ];
+      
+      bool launched = false;
+      for (final uriString in uriFormats) {
+        final Uri uri = Uri.parse(uriString);
+        debugPrint('Attempting to launch: $uriString');
+        
+        if (await canLaunchUrl(uri)) {
+          launched = await launchUrl(uri);
+          if (launched) {
+            debugPrint('Successfully launched: $uriString');
+            break;
+          }
+        }
+      }
+      
+      if (!launched) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not launch phone call to $formattedNumber'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error launching phone app: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch phone call')),
+          SnackBar(
+            content: Text('Error launching phone app: $e'),
+            duration: const Duration(seconds: 2),
+          ),
         );
       }
     }
@@ -55,13 +96,15 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           icon: Icon(Icons.arrow_back, color: _backButtonColor ?? Colors.blue),
           onPressed: () => Navigator.pop(context),
         ),
-        title: _appBarColor != null ? Text(
-          'Service Details',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ) : null,
+        title: _appBarColor != null
+            ? Text(
+                'Service Details',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : null,
       ),
       body: FutureBuilder<EmergencyService?>(
         future: _serviceFuture,
@@ -166,31 +209,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 const SizedBox(height: 20),
 
                 // Call buttons
-                if (service.phoneNumbers.isNotEmpty) ...[
-                  const Text(
-                    'Contact Numbers',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...service.phoneNumbers.map((phone) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _makePhoneCall(phone),
-                        icon: const Icon(Icons.phone, size: 18),
-                        label: Text(phone),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: service.type.color,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                      ),
-                    ),
-                  )).toList(),
-                ] else if (service.phoneNumber != null) ...[
+                if (service.contact != null && service.contact!.isNotEmpty) ...[
                   const Text(
                     'Contact Number',
                     style: TextStyle(
@@ -202,45 +221,11 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => _makePhoneCall(service.phoneNumber!),
+                      onPressed: () => _makePhoneCall(service.contact!),
                       icon: const Icon(Icons.phone, size: 18),
-                      label: Text(service.phoneNumber!),
+                      label: Text(service.contact!),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: service.type.color,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 16),
-
-                // Directions button
-                if (service.latitude != null && service.longitude != null) ...[
-                  const Text(
-                    'Directions',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DirectionsScreen(service: service),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.directions, size: 18),
-                      label: const Text('Get Directions'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: service.type.color,
-                        side: BorderSide(color: service.type.color),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),

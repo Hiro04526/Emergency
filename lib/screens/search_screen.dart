@@ -105,23 +105,43 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _callPhoneNumber(String phoneNumber) async {
-    // Format the phone number for dialing
-    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    // Format the phone number by removing any non-digit characters except +
+    final String formattedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
     
     try {
-      if (await url_launcher.canLaunchUrl(phoneUri)) {
-        await url_launcher.launchUrl(phoneUri);
-      } else {
+      // Try different URI formats
+      final List<String> uriFormats = [
+        'tel:$formattedNumber',
+        'tel://$formattedNumber',
+        'voicemail:$formattedNumber'
+      ];
+      
+      bool launched = false;
+      for (final uriString in uriFormats) {
+        final Uri uri = Uri.parse(uriString);
+        debugPrint('Attempting to launch: $uriString');
+        
+        if (await url_launcher.canLaunchUrl(uri)) {
+          launched = await url_launcher.launchUrl(uri);
+          if (launched) {
+            debugPrint('Successfully launched: $uriString');
+            break;
+          }
+        }
+      }
+      
+      if (!launched) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Could not launch phone app for $phoneNumber'),
+              content: Text('Could not launch phone app for $formattedNumber'),
               duration: const Duration(seconds: 2),
             ),
           );
         }
       }
     } catch (e) {
+      debugPrint('Error launching phone app: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -134,10 +154,14 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _navigateToServiceDetails(EmergencyService service) {
+    debugPrint('Navigating to service details for: ${service.id} - ${service.name}');
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ServiceDetailsScreen(serviceId: service.id),
+        builder: (context) => ServiceDetailsScreen(
+          serviceId: service.id,
+          service: service,
+        ),
       ),
     );
   }
@@ -275,7 +299,7 @@ class _SearchScreenState extends State<SearchScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Phone number button
-                if (service.phoneNumber != null) ...[
+                if (service.contact != null) ...[
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -288,7 +312,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            _callPhoneNumber(service.phoneNumber!);
+                            _callPhoneNumber(service.contact!);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: service.type.color,
@@ -300,7 +324,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           ),
                           child: Text(
-                            service.phoneNumber!,
+                            service.contact!,
                             style: const TextStyle(
                               fontSize: 13,
                               color: Colors.white,

@@ -52,8 +52,8 @@ class EmergencyService {
   final String level;
   final String? description;
   final double distanceKm;
-  final String? phoneNumber;
-  final List<String> phoneNumbers;
+  final String? contact;
+  final List<String> contacts;
   final double? latitude;
   final double? longitude;
 
@@ -64,11 +64,11 @@ class EmergencyService {
     required this.level,
     this.description,
     required this.distanceKm,
-    this.phoneNumber,
-    List<String>? phoneNumbers,
+    this.contact,
+    List<String>? contacts,
     this.latitude,
     this.longitude,
-  }) : phoneNumbers = phoneNumbers ?? (phoneNumber != null ? [phoneNumber] : []);
+  }) : contacts = contacts ?? (contact != null ? [contact] : []);
 
   // Create a copy with modified properties
   EmergencyService copyWith({
@@ -78,8 +78,8 @@ class EmergencyService {
     String? level,
     String? description,
     double? distanceKm,
-    String? phoneNumber,
-    List<String>? phoneNumbers,
+    String? contact,
+    List<String>? contacts,
     double? latitude,
     double? longitude,
   }) {
@@ -90,23 +90,17 @@ class EmergencyService {
       level: level ?? this.level,
       description: description ?? this.description,
       distanceKm: distanceKm ?? this.distanceKm,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      phoneNumbers: phoneNumbers ?? this.phoneNumbers,
+      contact: contact ?? this.contact,
+      contacts: contacts ?? this.contacts,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
     );
   }
 
   factory EmergencyService.fromJson(Map<String, dynamic> json) {
-    List<String>? phoneNumbersList;
-    
-    if (json['phone_numbers'] != null) {
-      phoneNumbersList = List<String>.from(json['phone_numbers']);
-    }
-    
     // Determine the service type by comparing lowercase strings
     ServiceType serviceType;
-    final typeString = json['type']?.toString().toLowerCase() ?? '';
+    final typeString = (json['type'] ?? '').toString().toLowerCase();
     
     if (typeString.contains('police')) {
       serviceType = ServiceType.police;
@@ -140,8 +134,9 @@ class EmergencyService {
       level: json['level'] ?? 'Standard',
       description: json['description'],
       distanceKm: distanceKm,
-      phoneNumber: json['phone_number'],
-      phoneNumbers: phoneNumbersList ?? (json['phone_number'] != null ? [json['phone_number']] : []),
+      contact: json['contact'],
+      contacts: json['contacts'] != null ? List<String>.from(json['contacts']) : 
+               (json['contact'] != null ? [json['contact']] : []),
       latitude: json['latitude'] is double ? json['latitude'] : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
       longitude: json['longitude'] is double ? json['longitude'] : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
     );

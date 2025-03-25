@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
-import 'dart:developer' as developer;
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({Key? key}) : super(key: key);
@@ -19,7 +18,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   List<FavoriteLocation> _favoriteLocations = [];
   String? _username;
   bool _isLoading = true;
-  String _debugInfo = '';
 
   @override
   void initState() {
@@ -31,7 +29,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Future<void> _loadUserProfile() async {
     setState(() {
       _isLoading = true;
-      _debugInfo = 'Loading profile...';
     });
     
     try {
@@ -46,12 +43,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       final user = authService.currentUser;
       
       if (user != null) {
-        developer.log('Current user ID: ${user.id}', name: 'profile_screen');
-        _debugInfo += '\nUser ID: ${user.id}';
-        
         try {
           // Call the get_username_by_user stored procedure
-          developer.log('Calling get_username_by_user RPC', name: 'profile_screen');
           final usernameResponse = await Supabase.instance.client.rpc(
             'get_username_by_user',
             params: {
@@ -59,68 +52,58 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             },
           ).timeout(const Duration(seconds: 5));
           
-          developer.log('Username response: $usernameResponse', name: 'profile_screen');
-          _debugInfo += '\nUsername response: $usernameResponse';
-          
-          try {
-            // Get favorite locations from the stored procedure
-            developer.log('Calling get_favorite_locations_by_user RPC', name: 'profile_screen');
-            final locationsResponse = await Supabase.instance.client.rpc(
-              'get_favorite_locations_by_user',
-              params: {
-                'p_uid': user.id,
-              },
-            ).timeout(const Duration(seconds: 5));
-            
-            developer.log('Locations response: $locationsResponse', name: 'profile_screen');
-            _debugInfo += '\nLocations response: $locationsResponse';
-            
-            if (mounted) {
-              setState(() {
-                // Update username from database
-                if (usernameResponse != null) {
-                  _username = usernameResponse.toString();
-                  _debugInfo += '\nProcessed username: $_username';
-                }
-                
-                if (_username != null && _username!.isNotEmpty && _nameController.text.isEmpty) {
-                  _nameController.text = _username!;
-                }
-                
-                // Process favorite locations from the database
-                if (locationsResponse != null) {
-                  if (locationsResponse is List) {
-                    _debugInfo += '\nLocations is a List with ${locationsResponse.length} items';
-                    _favoriteLocations = _processFavoriteLocations(locationsResponse);
-                  } else {
-                    _debugInfo += '\nLocations is not a List: ${locationsResponse.runtimeType}';
-                    // Try to convert to list if possible
-                    try {
-                      final List<dynamic> locationsList = List<dynamic>.from([locationsResponse]);
-                      _favoriteLocations = _processFavoriteLocations(locationsList);
-                    } catch (e) {
-                      _debugInfo += '\nError converting locations: $e';
-                    }
-                  }
-                } else {
-                  _debugInfo += '\nLocations response was null';
-                }
-                
-                _isLoading = false;
-              });
-            }
-          } catch (locError) {
-            developer.log('Error getting locations: $locError', name: 'profile_screen', error: locError);
-            _debugInfo += '\nLocation error: $locError';
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
+          if (mounted) {
+            setState(() {
+              // Update username from database
+              if (usernameResponse != null) {
+                _username = usernameResponse.toString();
+              }
+              
+              if (_username != null && _username!.isNotEmpty && _nameController.text.isEmpty) {
+                _nameController.text = _username!;
+              }
+            });
           }
         } catch (nameError) {
-          developer.log('Error getting username: $nameError', name: 'profile_screen', error: nameError);
-          _debugInfo += '\nUsername error: $nameError';
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
+        
+        try {
+          // Get favorite locations from the stored procedure
+          final locationsResponse = await Supabase.instance.client.rpc(
+            'get_favorite_locations_by_user',
+            params: {
+              'p_uid': user.id,
+            },
+          ).timeout(const Duration(seconds: 5));
+          
+          if (mounted) {
+            setState(() {
+              // Process favorite locations from the database
+              if (locationsResponse != null) {
+                if (locationsResponse is List) {
+                  _favoriteLocations = _processFavoriteLocations(locationsResponse);
+                } else {
+                  // Try to convert to list if possible
+                  try {
+                    final List<dynamic> locationsList = List<dynamic>.from([locationsResponse]);
+                    _favoriteLocations = _processFavoriteLocations(locationsList);
+                  } catch (e) {
+                    // Ignore error
+                  }
+                }
+              } else {
+                // Ignore null response
+              }
+              
+              _isLoading = false;
+            });
+          }
+        } catch (locError) {
           if (mounted) {
             setState(() {
               _isLoading = false;
@@ -128,8 +111,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           }
         }
       } else {
-        developer.log('User is null', name: 'profile_screen');
-        _debugInfo += '\nUser is null';
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -137,8 +118,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         }
       }
     } catch (e) {
-      developer.log('Error loading user profile data: $e', name: 'profile_screen', error: e);
-      _debugInfo += '\nGeneral error: $e';
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -150,19 +129,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // Process the favorite locations from the database response
   List<FavoriteLocation> _processFavoriteLocations(List locationsResponse) {
     final locations = <FavoriteLocation>[];
-    developer.log('Processing ${locationsResponse.length} locations', name: 'profile_screen');
-    _debugInfo += '\nProcessing ${locationsResponse.length} locations';
     
     try {
       for (var i = 0; i < locationsResponse.length; i++) {
-        // Log each location for debugging
-        developer.log('Location $i: ${locationsResponse[i]}', name: 'profile_screen');
-        _debugInfo += '\nLocation $i: ${locationsResponse[i]}';
-        
         final locationStr = locationsResponse[i].toString();
         // Check if this is a valid favorite location string
         if (locationStr.isEmpty) {
-          _debugInfo += '\nLocation string is empty';
           continue;
         }
         
@@ -204,15 +176,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           );
         }
       }
-      _debugInfo += '\nProcessed ${locations.length} valid locations';
     } catch (e) {
-      developer.log('Error processing favorite locations: $e', name: 'profile_screen', error: e);
-      _debugInfo += '\nError processing locations: $e';
+      // Ignore error
     }
     
     // Only use placeholder data if no locations were found AND there were no locations in the response
     if (locations.isEmpty && locationsResponse.isEmpty) {
-      _debugInfo += '\nNo locations found, using placeholders';
       locations.addAll([
         FavoriteLocation(
           id: '1',
@@ -263,7 +232,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           },
         );
       } catch (e) {
-        developer.log('Error updating username in database: $e', name: 'profile_screen', error: e);
+        // Ignore error
       }
     }
     
@@ -340,25 +309,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     // }
   }
 
-  // Method to show debug info dialog
-  void _showDebugInfo() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Debug Info'),
-        content: SingleChildScrollView(
-          child: Text(_debugInfo),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -403,11 +353,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // Debug button
-          IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.blue),
-            onPressed: _showDebugInfo,
-          ),
           IconButton(
             icon: Icon(
               _isEditing ? Icons.check : Icons.edit,
