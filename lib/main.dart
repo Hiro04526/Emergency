@@ -40,6 +40,11 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
   
+  // Determine initial route based on session
+  final bool hasSession = Supabase.instance.client.auth.currentSession != null;
+  final Widget initialScreen = hasSession ? const HomeScreen() : const AuthScreen();
+  print('Initial screen: $initialScreen');
+  
   runApp(
     MultiProvider(
       providers: [
@@ -49,13 +54,18 @@ void main() async {
         Provider<AlertService>.value(value: alertService),
         ChangeNotifierProvider(create: (_) => UserProfileProvider()),
       ],
-      child: const EmergencyServicesApp(),
+      child: EmergencyServicesApp(initialScreen: initialScreen),
     ),
   );
 }
 
 class EmergencyServicesApp extends StatelessWidget {
-  const EmergencyServicesApp({Key? key}) : super(key: key);
+  final Widget initialScreen;
+  
+  const EmergencyServicesApp({
+    Key? key, 
+    required this.initialScreen,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +102,7 @@ class EmergencyServicesApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AuthScreen(),
+      home: initialScreen,
     );
   }
 }

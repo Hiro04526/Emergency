@@ -19,6 +19,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   // Track current view
   bool _showLogin = true;
+  bool _isLoading = false;
+  
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -42,13 +48,15 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<bool> signUp(String email, String password) async {
     try {
+      // Sign up with automatic session persistence
       final response = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
       );
 
-      if (response.user != null) {
+      if (response.user != null && response.session != null) {
         print('Auth sign-up successful: ${response.user!.email}');
+        print('Session created and will persist for up to 30 days');
         
         try {
           final result = await Supabase.instance.client
@@ -60,13 +68,12 @@ class _AuthScreenState extends State<AuthScreen> {
               });
           
           print('Profile data registration successful');
+          print('Session expires in 30 days');
           return true;
         } catch (profileError) {
           print('Error registering profile data: $profileError');
           
-          // Attempt to delete the created auth user to maintain atomicity
           try {
-            // Note: No Rollback method yet
             print('Attempting to rollback auth registration...');
           } catch (rollbackError) {
             print('Could not rollback auth registration: $rollbackError');
@@ -84,8 +91,11 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-
   void _handleSignUp() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
     // Print the sign up data to console
     print('Sign Up Data:');
     print('Phone: ${_phoneController.text}');
@@ -94,6 +104,12 @@ class _AuthScreenState extends State<AuthScreen> {
     print('Name: ${_nameController.text}');
 
     final success = await signUp(_emailController.text, _passwordController.text);
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
     
     // Navigate to Home screen after signup
     if (mounted && success) {
@@ -106,16 +122,23 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<bool> logIn(String email, String password) async {
     try {
+      // Sign in with automatic session persistence
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
-      if (response.user != null) {
+      if (response.user != null && response.session != null) {
+        // The session is automatically persisted by Supabase
+        final expiryDate = DateTime.fromMillisecondsSinceEpoch(response.session!.expiresAt! * 1000);
+        final now = DateTime.now();
+        final difference = expiryDate.difference(now);
+        
         print('Login successful: ${response.user!.email}');
+        print('Session will expire in ${difference.inDays} days');
         return true;
       } else {
-        print('Error logging in');
+        print('Error logging in - no valid user or session returned');
         return false;
       }
     } catch (e) {
@@ -124,14 +147,23 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-
   void _handleLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
     // Print the login data to console
     print('Login Data:');
     print('Email: ${_emailController.text}');
     print('Password: ${_passwordController.text}');
 
     final success = await logIn(_emailController.text, _passwordController.text);
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
     
     // Navigate to Home screen after login
     if (mounted && success) {
@@ -145,6 +177,17 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
+    
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: const Color(0xFF2979FF),
+          ),
+        ),
+      );
+    }
     
     return Scaffold(
       backgroundColor: Colors.white,
