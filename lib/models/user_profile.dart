@@ -46,3 +46,42 @@ class UserProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+// Model for favorite locations
+class FavoriteLocation {
+  final String id;
+  final String name;
+  final String address;
+  final double latitude;
+  final double longitude;
+
+  FavoriteLocation({
+    required this.id,
+    required this.name,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  // Create from JSON data
+  factory FavoriteLocation.fromJson(Map<String, dynamic> json) {
+    return FavoriteLocation(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      address: json['address'] ?? '',
+      latitude: (json['latitude'] ?? 0.0).toDouble(),
+      longitude: (json['longitude'] ?? 0.0).toDouble(),
+    );
+  }
+
+  // Convert to JSON data
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+  }
+}
