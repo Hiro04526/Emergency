@@ -137,6 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNavbar() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
     return Container(
       padding: const EdgeInsets.only(top: 8 ),
       child: Row(
@@ -183,12 +185,19 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.person_outline),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const UserProfileScreen(),
-                ),
-              );
+              // Check if user is authenticated
+              if (authService.isAuthenticated) {
+                // Navigate to profile screen if authenticated
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UserProfileScreen(),
+                  ),
+                );
+              } else {
+                // Show login dialog if not authenticated
+                authService.showAuthRequiredDialog(context);
+              }
             },
           ),
         ],
