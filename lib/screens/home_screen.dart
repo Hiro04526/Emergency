@@ -7,6 +7,8 @@ import 'search_screen.dart';
 import 'user_profile_screen.dart';
 import 'add_emergency_contact_screen.dart';
 import 'report_alert_screen.dart';
+import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -35,7 +37,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context, listen: true);
+    final bool isAuthenticated = authService.isAuthenticated;
+    
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Emergency Services'),
+        actions: [
+          if (isAuthenticated)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                try {
+                  await authService.signOut();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Logged out successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error signing out: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              // Navigate to settings
+            },
+          ),
+        ],
+      ),
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -47,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Navbar with location and profile
                 _buildNavbar(),
                 
-                const SizedBox(height: 8),
+                // const SizedBox(height: 8),
                 
                 // Emergency Services Section
                 const Text(
@@ -87,6 +123,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 
                 // Add Emergency Contact Section
                 _buildAddEmergencyContactSection(),
+                
+                const SizedBox(height: 12),
+                
+                // Protected Feature Button
+                _buildProtectedFeatureButton(context),
               ],
             ),
           ),
@@ -97,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavbar() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(top: 8 ),
       child: Row(
         children: [
           Expanded(
@@ -333,16 +374,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildReportAlertButton() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ReportAlertScreen(),
-            ),
-          ).then((_) => _loadRecentAlerts());
+          if (authService.canAccessContributorFeature(context)) {
+            // Only navigate if user is authenticated
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ReportAlertScreen(),
+              ),
+            ).then((_) => _loadRecentAlerts());
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red,
@@ -363,6 +409,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAddEmergencyContactSection() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -395,12 +443,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AddEmergencyContactScreen(),
-                      ),
-                    );
+                    if (authService.canAccessContributorFeature(context)) {
+                      // Only navigate if user is authenticated
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AddEmergencyContactScreen(),
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
@@ -422,6 +473,65 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildProtectedFeatureButton(BuildContext context) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final bool isAuthenticated = authService.isAuthenticated;
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isAuthenticated ? Icons.lock_open : Icons.lock,
+                color: isAuthenticated ? Colors.green : Colors.grey,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Premium Features',
+                style: TextStyle(
+                  fontSize: 16, 
+                  fontWeight: FontWeight.bold,
+                  color: isAuthenticated ? Colors.black : Colors.grey[600],
+                ),
+              ),
+              const Spacer(),
+              if (!isAuthenticated)
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/auth');
+                  },
+                  child: const Text('Log In'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: () {
+              if (authService.canAccessAuthFeature(context)) {
+                // This code only executes if the user is authenticated
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Accessing protected feature!')),
+                );
+                // Navigate to the protected feature or perform protected action
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isAuthenticated ? Colors.blue : Colors.grey[300],
+              foregroundColor: isAuthenticated ? Colors.white : Colors.grey[600],
+              disabledBackgroundColor: Colors.grey[300],
+              disabledForegroundColor: Colors.grey[600],
+            ),
+            child: const Text('Access Premium Feature'),
+          ),
+        ],
+      ),
     );
   }
 

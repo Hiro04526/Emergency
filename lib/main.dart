@@ -2,13 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/auth_screen.dart';
 import 'services/location_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/alert_service.dart';
+import 'services/auth_service.dart';
 import 'models/user_profile.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    throw Exception('Error loading .env file: $e');
+  }
+
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize services
@@ -24,6 +35,15 @@ void main() async {
   // Initialize alert service
   final alertService = AlertService();
   alertService.initialize(notificationService);
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!, 
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+  
+  // Initialize auth service
+  final authService = AuthService();
+  authService.initialize();
   
   runApp(
     MultiProvider(
@@ -32,6 +52,7 @@ void main() async {
         Provider<ApiService>.value(value: apiService),
         Provider<NotificationService>.value(value: notificationService),
         Provider<AlertService>.value(value: alertService),
+        Provider<AuthService>.value(value: authService),
         ChangeNotifierProvider(create: (_) => UserProfileProvider()),
       ],
       child: const EmergencyServicesApp(),
@@ -78,6 +99,9 @@ class EmergencyServicesApp extends StatelessWidget {
         ),
       ),
       home: const HomeScreen(),
+      routes: {
+        '/auth': (context) => const AuthScreen(),
+      },
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/emergency_service.dart';
 import '../models/emergency_contact.dart';
+import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 class AddEmergencyContactScreen extends StatefulWidget {
@@ -27,11 +29,35 @@ class _AddEmergencyContactScreenState extends State<AddEmergencyContactScreen> {
   final _streetController = TextEditingController();
   
   ServiceType? _selectedType;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
     _selectedType = widget.initialType;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Check authentication on first load
+    if (!_initialized) {
+      _initialized = true;
+      
+      // Get auth service
+      final authService = Provider.of<AuthService>(context, listen: false);
+      
+      // If not authenticated, show dialog and go back
+      if (!authService.isAuthenticated) {
+        // Need to use post-frame callback to avoid build issues
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          authService.showContributorFeatureDialog(context);
+          // Pop after showing dialog
+          Navigator.of(context).pop();
+        });
+      }
+    }
   }
 
   @override
