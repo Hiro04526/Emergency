@@ -3,6 +3,7 @@ import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
 import '../services/location_service.dart';
 import '../services/alert_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'search_screen.dart';
 import 'user_profile_screen.dart';
 import 'add_emergency_contact_screen.dart';
@@ -39,11 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context, listen: true);
+    final authService = Provider.of<AuthService>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Emergency Services'),
+        automaticallyImplyLeading: false,
+        title: SvgPicture.asset('assets/logo/Component_1.svg', height: 40, width: 150),
         actions: [
           IconButton(
             icon: const Icon(Icons.person_outline),
@@ -73,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Navbar with location and profile
+                // Navbar with location
                 _buildNavbar(),
 
                 // const SizedBox(height: 8),
@@ -116,8 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Add Emergency Contact Section
                 _buildAddEmergencyContactSection(),
-
-                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavbar() {
     return Container(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Expanded(

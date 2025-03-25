@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'home_screen.dart';
 import '../services/auth_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 class AuthScreen extends StatefulWidget {
@@ -244,32 +244,10 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(height: 40),
           // Logo and app name
           Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2979FF),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'emergency.ph',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF2979FF),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            child: SvgPicture.asset(
+              'assets/logo/Component_1.svg',
+              height: 50,
+              width: 180,
             ),
           ),
           const SizedBox(height: 48),
@@ -357,32 +335,10 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(height: 40),
           // Logo and app name
           Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2979FF),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'emergency.ph',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF2979FF),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            child: SvgPicture.asset(
+              'assets/logo/Component_1.svg',
+              height: 50,
+              width: 180,
             ),
           ),
           const SizedBox(height: 48),
