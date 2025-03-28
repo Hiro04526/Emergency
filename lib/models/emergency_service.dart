@@ -56,6 +56,8 @@ class EmergencyService {
   final List<String> contacts;
   final double? latitude;
   final double? longitude;
+  final String? addedBy;
+  final String? verifiedBy;
 
   EmergencyService({
     required this.id,
@@ -68,6 +70,8 @@ class EmergencyService {
     List<String>? contacts,
     this.latitude,
     this.longitude,
+    this.addedBy,
+    this.verifiedBy,
   }) : contacts = contacts ?? (contact != null ? [contact] : []);
 
   // Create a copy with modified properties
@@ -82,6 +86,8 @@ class EmergencyService {
     List<String>? contacts,
     double? latitude,
     double? longitude,
+    String? addedBy,
+    String? verifiedBy,
   }) {
     return EmergencyService(
       id: id ?? this.id,
@@ -94,6 +100,8 @@ class EmergencyService {
       contacts: contacts ?? this.contacts,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      addedBy: addedBy ?? this.addedBy,
+      verifiedBy: verifiedBy ?? this.verifiedBy,
     );
   }
 
@@ -127,6 +135,7 @@ class EmergencyService {
       }
     }
     
+    // Create with default verification data for development purposes
     return EmergencyService(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Unknown Service',
@@ -139,6 +148,9 @@ class EmergencyService {
                (json['contact'] != null ? [json['contact']] : []),
       latitude: json['latitude'] is double ? json['latitude'] : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
       longitude: json['longitude'] is double ? json['longitude'] : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
+      // Hard-coded values for development
+      addedBy: json['added_by'] ?? "John Doe",
+      verifiedBy: json['verified_by'] ?? "Enzo Panugayan",
     );
   }
 }

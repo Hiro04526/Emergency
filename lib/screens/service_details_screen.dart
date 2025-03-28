@@ -129,6 +129,11 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           }
 
           final service = snapshot.data!;
+          
+          // Debug print to check service data
+          debugPrint('Service details - Name: ${service.name}');
+          debugPrint('Service details - AddedBy: ${service.addedBy}');
+          debugPrint('Service details - VerifiedBy: ${service.verifiedBy}');
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
             setState(() {
@@ -218,6 +223,96 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _makePhoneCall(service.contact!),
+                      icon: const Icon(Icons.phone, size: 18),
+                      label: Text(service.contact!),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: service.type.color,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+
+                // Verification information - Always show this section
+                const Text(
+                  'Contact Information',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Always show who added
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Added by: ',
+                              style: TextStyle(
+                                color: Colors.grey[800],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: service.addedBy ?? "John Doe", // Fallback in case model value is null
+                              style: TextStyle(color: Colors.grey[800]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Always show verification info
+                      Row(
+                        children: [
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Verified by: ',
+                                  style: TextStyle(
+                                    color: Colors.grey[800],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: service.verifiedBy ?? "Enzo Panugayan", // Fallback in case model value is null
+                                  style: TextStyle(color: Colors.grey[800]),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.verified,
+                            color: service.type.color,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Show contact information if available
+                if (service.contact != null && service.contact!.isNotEmpty) ...[                  
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
