@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/emergency_alert.dart';
 import '../services/alert_service.dart';
 import 'alert_details_screen.dart';
+import '../providers/theme_provider.dart';
+import 'package:provider/provider.dart';
+import 'report_alert_screen.dart';
 
 class AlertsScreen extends StatefulWidget {
   final AlertType? initialAlertType;
@@ -71,12 +74,21 @@ class _AlertsScreenState extends State<AlertsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+
     return Scaffold(
+      backgroundColor: isDarkMode ? Color(0xFF121212) : Colors.white,
       appBar: AppBar(
         title: const Text('Emergency Alerts'),
+        backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.blue,
+        elevation: isDarkMode ? 0 : 4,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
+          indicatorColor: isDarkMode ? Colors.white : null,
+          labelColor: Colors.white,
+          unselectedLabelColor: isDarkMode ? Colors.white70 : Colors.white70,
           tabs: [
             const Tab(text: 'All'),
             ...AlertType.values.map((type) => Tab(text: type.name)).toList(),
@@ -84,7 +96,9 @@ class _AlertsScreenState extends State<AlertsScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(
+              color: isDarkMode ? Colors.white : Colors.blue,
+            ))
           : TabBarView(
               controller: _tabController,
               children: [
@@ -99,25 +113,47 @@ class _AlertsScreenState extends State<AlertsScreen>
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Navigate to report alert screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Report Alert feature coming soon')),
+          // Get the currently selected alert type based on tab index
+          AlertType? selectedType;
+          if (_tabController.index > 0) {
+            // Index 0 is "All", so we subtract 1 to get the correct AlertType
+            selectedType = AlertType.values[_tabController.index - 1];
+          }
+          
+          // Navigate to report alert screen with the selected type
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ReportAlertScreen(
+                initialAlertType: selectedType,
+              ),
+            ),
           );
         },
+        backgroundColor: isDarkMode ? Colors.blue : null,
         child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildAlertsList(List<EmergencyAlert> alerts) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+
     if (alerts.isEmpty) {
-      return const Center(
-        child: Text('No alerts found'),
+      return Center(
+        child: Text(
+          'No alerts found',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white70 : Colors.black54,
+          ),
+        ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _loadAlerts,
+      color: isDarkMode ? Colors.white : Colors.blue,
+      backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: alerts.length,
@@ -130,15 +166,19 @@ class _AlertsScreenState extends State<AlertsScreen>
   }
 
   Widget _buildAlertCard(EmergencyAlert alert) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: alert.type.color.withAlpha(76),
+          color: alert.type.color.withAlpha(isDarkMode ? 100 : 76),
           width: 1,
         ),
       ),
+      elevation: isDarkMode ? 2 : 1,
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -160,7 +200,7 @@ class _AlertsScreenState extends State<AlertsScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: alert.type.color.withAlpha(38),
+                      color: alert.type.color.withAlpha(isDarkMode ? 50 : 38),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -184,7 +224,7 @@ class _AlertsScreenState extends State<AlertsScreen>
                         Text(
                           _formatTimestamp(alert.timestamp),
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                             fontSize: 12,
                           ),
                         ),
@@ -198,7 +238,7 @@ class _AlertsScreenState extends State<AlertsScreen>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.red.withAlpha(38),
+                        color: Colors.red.withAlpha(isDarkMode ? 50 : 38),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
@@ -217,17 +257,19 @@ class _AlertsScreenState extends State<AlertsScreen>
               // Alert title and description
               Text(
                 alert.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
+                  color: isDarkMode ? Colors.white : Colors.black87,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 alert.description,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   height: 1.4,
+                  color: isDarkMode ? Colors.white70 : Colors.black87,
                 ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -239,12 +281,12 @@ class _AlertsScreenState extends State<AlertsScreen>
                 Row(
                   children: [
                     Icon(Icons.location_on_outlined,
-                        size: 16, color: Colors.grey[600]),
+                        size: 16, color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text(
                       alert.location!,
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         fontSize: 14,
                       ),
                     ),
@@ -256,12 +298,12 @@ class _AlertsScreenState extends State<AlertsScreen>
                 Row(
                   children: [
                     Icon(Icons.source_outlined,
-                        size: 16, color: Colors.grey[600]),
+                        size: 16, color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text(
                       'Source: ${alert.source}',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         fontSize: 14,
                       ),
                     ),

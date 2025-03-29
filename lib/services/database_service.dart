@@ -390,8 +390,6 @@ class DatabaseService {
         return 'fire';
       case ServiceType.government:
         return 'government';
-      default:
-        return 'police';
     }
   }
 

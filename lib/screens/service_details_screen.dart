@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../models/emergency_service.dart';
 import '../services/api_service.dart';
+import '../providers/theme_provider.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final String serviceId;
@@ -22,6 +24,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   late Future<EmergencyService?> _serviceFuture;
   Color? _appBarColor;
   Color? _backButtonColor;
+  bool _isVerifying = false;
 
   @override
   void initState() {
@@ -86,14 +89,121 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     }
   }
 
+  Future<void> _verifyService(EmergencyService service) async {
+    setState(() {
+      _isVerifying = true;
+    });
+
+    try {
+      // Simulate API call to verify the service
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // Update the service with verified status
+      final updatedService = service.copyWith(isVerified: true);
+      
+      // Update the UI
+      setState(() {
+        _serviceFuture = Future.value(updatedService);
+        _isVerifying = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Service verified successfully'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error verifying service: $e');
+      setState(() {
+        _isVerifying = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error verifying service: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _reportIssue(EmergencyService service) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Issue'),
+        content: const Text(
+          'Do you want to report an issue with this service? This will help us improve our database.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thank you for your report. We will review it shortly.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openInMaps(double latitude, double longitude, String name) async {
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
+    
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open maps application'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening maps: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening maps: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Scaffold(
+      backgroundColor: isDarkMode ? Color(0xFF121212) : Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: _appBarColor ?? Colors.white,
+        backgroundColor: _appBarColor ?? (isDarkMode ? Color(0xFF1E1E1E) : Colors.white),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: _backButtonColor ?? Colors.blue),
+          icon: Icon(Icons.arrow_back, color: _backButtonColor ?? (isDarkMode ? Colors.white : Colors.blue)),
           onPressed: () => Navigator.pop(context),
         ),
         title: _appBarColor != null
@@ -147,18 +257,44 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Service icon
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: service.type.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        _getIconData(service.type),
-                        color: service.type.color,
-                        size: 30,
-                      ),
+                    Stack(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: service.type.color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _getIconData(service.type),
+                            color: service.type.color,
+                            size: 30,
+                          ),
+                        ),
+                        if (service.isVerified)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: service.type.color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDarkMode ? Color(0xFF121212) : Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 10,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(width: 12),
 
@@ -178,7 +314,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                           Text(
                             service.level,
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
@@ -188,13 +324,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                               Icon(
                                 Icons.location_on_outlined,
                                 size: 14,
-                                color: Colors.grey[600],
+                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 '${service.distanceKm.toStringAsFixed(1)} km away',
                                 style: TextStyle(
-                                  color: Colors.grey[600],
+                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                                   fontSize: 14,
                                 ),
                               ),
@@ -209,7 +345,32 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 const SizedBox(height: 20),
 
                 // Call buttons
-                if (service.contact != null && service.contact!.isNotEmpty) ...[
+                if (service.contacts.isNotEmpty) ...[
+                  const Text(
+                    'Contact Numbers',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...service.contacts.map((contact) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _makePhoneCall(contact),
+                        icon: const Icon(Icons.phone, size: 18),
+                        label: Text(contact),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: service.type.color,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                  )).toList(),
+                ] else if (service.contact != null && service.contact!.isNotEmpty) ...[
                   const Text(
                     'Contact Number',
                     style: TextStyle(
@@ -226,6 +387,124 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       label: Text(service.contact!),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: service.type.color,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+
+                // Verification and Report buttons
+                if (!service.isVerified) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isVerifying ? null : () => _verifyService(service),
+                      icon: _isVerifying 
+                          ? Container(
+                              width: 18,
+                              height: 18,
+                              padding: const EdgeInsets.all(2),
+                              child: const CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.verified_user, size: 18),
+                      label: Text(_isVerifying ? 'Verifying...' : 'Verify Number'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: service.type.color,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        disabledBackgroundColor: service.type.color.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _reportIssue(service),
+                    icon: const Icon(Icons.report_problem, size: 18),
+                    label: const Text('Report Issue'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: service.type.color,
+                      side: BorderSide(color: service.type.color),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Location
+                if (service.latitude != null && service.longitude != null) ...[
+                  const Text(
+                    'Location',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          color: service.type.color,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                service.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                'Latitude: ${service.latitude!.toStringAsFixed(6)}, Longitude: ${service.longitude!.toStringAsFixed(6)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openInMaps(
+                        service.latitude!,
+                        service.longitude!,
+                        service.name,
+                      ),
+                      icon: const Icon(Icons.map, size: 18),
+                      label: const Text('View on Google Maps'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: service.type.color,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),
@@ -246,8 +525,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   const SizedBox(height: 8),
                   Text(
                     service.description!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       height: 1.5,
                     ),
                   ),

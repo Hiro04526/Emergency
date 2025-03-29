@@ -13,13 +13,11 @@ class AuthService {
   // Initialize the service
   void initialize() {
     // Set initial authentication state
-    final session = Supabase.instance.client.auth.currentSession;
-    authStateNotifier.value = session != null;
+    authStateNotifier.value = Supabase.instance.client.auth.currentSession != null;
     
     // Listen for auth state changes
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final AuthChangeEvent event = data.event;
-      final Session? session = data.session;
       
       switch (event) {
         case AuthChangeEvent.signedIn:
@@ -27,7 +25,6 @@ class AuthService {
           authStateNotifier.value = true;
           break;
         case AuthChangeEvent.signedOut:
-        case AuthChangeEvent.userDeleted:
           authStateNotifier.value = false;
           break;
         default:

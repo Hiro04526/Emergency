@@ -3,6 +3,7 @@ import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
 import '../services/location_service.dart';
 import '../services/alert_service.dart';
+import '../providers/theme_provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'search_screen.dart';
 import 'user_profile_screen.dart';
@@ -41,14 +42,25 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: SvgPicture.asset('assets/logo/Component_1.svg', height: 40, width: 150),
+        title: SvgPicture.asset(
+          'assets/logo/Component_1.svg', 
+          height: 40, 
+          width: 150,
+        ),
+        backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_outline),
+            icon: Icon(
+              Icons.person_outline,
+              color: isDarkMode ? Colors.white : Colors.grey[800],
+            ),
             onPressed: () {
               // Check if user is authenticated
               if (authService.isAuthenticated) {
@@ -67,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? Color(0xFF121212) : Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -75,17 +87,28 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Recent Alerts Section
+                _buildRecentAlertsSection(),
+                
+                const SizedBox(height: 12),
+                
+                // Report Alert Button
+                _buildReportAlertButton(),
+                
+                const SizedBox(height: 12),
+                
                 // Navbar with location
                 _buildNavbar(),
 
-                // const SizedBox(height: 8),
+                const SizedBox(height: 8),
 
                 // Emergency Services Section
-                const Text(
+                Text(
                   'Emergency Services',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
 
@@ -103,16 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       .map((type) => _buildServiceButton(type))
                       .toList(),
                 ),
-
-                const SizedBox(height: 12),
-
-                // Recent Alerts Section
-                _buildRecentAlertsSection(),
-
-                const SizedBox(height: 12),
-
-                // Report Alert Button
-                _buildReportAlertButton(),
 
                 const SizedBox(height: 12),
 
@@ -135,40 +148,50 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ValueListenableBuilder<String?>(
               valueListenable: _locationService.addressNotifier,
               builder: (context, address, child) {
-                return GestureDetector(
-                  onTap: () {
-                    _locationService.refreshLocation();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Refreshing your location...'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        color: Colors.blue,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          address ?? "Locating your position...",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                return Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: Colors.blue,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        address ?? "Locating your position...",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Provider.of<ThemeProvider>(context).isDarkMode ? Colors.white : Colors.black,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 );
               },
             ),
+          ),
+          // Add refresh button
+          IconButton(
+            icon: const Icon(
+              Icons.refresh,
+              color: Colors.blue,
+              size: 22,
+            ),
+            onPressed: () {
+              _locationService.refreshLocation();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Refreshing your location...'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(),
+            splashRadius: 24,
           ),
         ],
       ),
@@ -191,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
               spreadRadius: 1,
               blurRadius: 3,
               offset: const Offset(0, 1),
@@ -223,20 +246,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecentAlertsSection() {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Recent Alerts',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -245,20 +271,40 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               },
-              child: const Text('View All'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+              ),
+              child: const Text(
+                'View All',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 8),
         _recentAlerts.isEmpty
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20.0),
+            ? Container(
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 20.0),
+                child: Center(
                   child: Text(
                     'No recent alerts',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey,
                     ),
                   ),
                 ),
@@ -266,12 +312,14 @@ class _HomeScreenState extends State<HomeScreen> {
             : Container(
                 height: 300, // Fixed height for the scrollable container
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: isDarkMode 
+                        ? Colors.black.withValues(alpha: 0.3) 
+                        : Colors.grey.withValues(alpha: 0.2),
                       spreadRadius: 1,
                       blurRadius: 4,
                       offset: const Offset(0, 2),
@@ -286,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 4,
                       margin: const EdgeInsets.only(top: 8, bottom: 4),
                       decoration: BoxDecoration(
-                        color: Colors.grey[400],
+                        color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -305,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
+                        color: isDarkMode ? Colors.grey[800] : Colors.grey[100],
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(12),
                           bottomRight: Radius.circular(12),
@@ -315,13 +363,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.keyboard_arrow_down,
-                              size: 16, color: Colors.grey[600]),
+                              size: 16, color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                           const SizedBox(width: 4),
                           Text(
                             'Scroll for more alerts',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -336,6 +384,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAlertItem(EmergencyAlert alert) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -349,11 +399,13 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: isDarkMode 
+                ? Colors.black.withValues(alpha: 0.3) 
+                : Colors.grey.withValues(alpha: 0.1),
               spreadRadius: 1,
               blurRadius: 3,
               offset: const Offset(0, 1),
@@ -366,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: alert.type.color.withOpacity(0.1),
+                color: alert.type.color.withValues(alpha: 26), // 0.1 * 255 ≈ 26
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -382,9 +434,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     alert.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -392,7 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     alert.description,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[700],
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -403,14 +456,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icon(
                         Icons.access_time,
                         size: 14,
-                        color: Colors.grey[600],
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                       const SizedBox(width: 4),
                       Text(
                         _formatTimestamp(alert.timestamp),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -418,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(
                           Icons.location_on,
                           size: 14,
-                          color: Colors.grey[600],
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -426,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             alert.location!,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -446,10 +499,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildReportAlertButton() {
     final authService = Provider.of<AuthService>(context, listen: false);
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
 
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.add_alert),
+        label: const Text('Report Alert'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          elevation: isDarkMode ? 4 : 2,
+        ),
         onPressed: () {
           if (authService.canAccessContributorFeature(context)) {
             // Only navigate if user is authenticated
@@ -461,52 +526,40 @@ class _HomeScreenState extends State<HomeScreen> {
             ).then((_) => _loadRecentAlerts());
           }
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: const Text(
-          'Report Alert',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ),
     );
   }
 
   Widget _buildAddEmergencyContactSection() {
     final authService = Provider.of<AuthService>(context, listen: false);
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Contribute to Emergency Services',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
+            color: isDarkMode ? Color(0xFF1E1E1E) : Colors.blue.withValues(alpha: 51), // Increased from 26 to 51 (0.2 * 255)
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Help us improve our emergency services database by adding contact information for emergency services in your area.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.black87,
+                  color: isDarkMode ? Colors.grey[400] : Colors.black87,
                 ),
               ),
               const SizedBox(height: 16),

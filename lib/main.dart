@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth_screen.dart';
@@ -9,6 +8,7 @@ import 'services/notification_service.dart';
 import 'services/alert_service.dart';
 import 'services/auth_service.dart';
 import 'models/user_profile.dart';
+import 'providers/theme_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 void main() async {
@@ -37,6 +37,10 @@ void main() async {
   final authService = AuthService();
   authService.initialize();
   
+  // Initialize theme provider
+  final themeProvider = ThemeProvider();
+  await themeProvider.initialize();
+  
   runApp(
     MultiProvider(
       providers: [
@@ -46,53 +50,29 @@ void main() async {
         Provider<AlertService>.value(value: alertService),
         Provider<AuthService>.value(value: authService),
         ChangeNotifierProvider(create: (_) => UserProfileProvider()),
+        ChangeNotifierProvider.value(value: themeProvider),
       ],
-      child: const EmergencyServicesApp(),
+      child: EmergencyServicesApp(),
     ),
   );
 }
 
 class EmergencyServicesApp extends StatelessWidget {
-  const EmergencyServicesApp({Key? key}) : super(key: key);
+  EmergencyServicesApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final notificationService = Provider.of<NotificationService>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     
     return MaterialApp(
       title: 'Emergency Services',
       scaffoldMessengerKey: notificationService.scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.white,
-        textTheme: GoogleFonts.interTextTheme(
-          Theme.of(context).textTheme,
-        ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.black),
-          titleTextStyle: GoogleFonts.inter(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-          ),
-        ),
-      ),
-      home: const HomeScreen(),
+      theme: themeProvider.theme,
+      home: HomeScreen(),
       routes: {
-        '/auth': (context) => const AuthScreen(),
+        '/auth': (context) => AuthScreen(),
       },
     );
   }

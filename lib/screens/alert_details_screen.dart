@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../models/emergency_alert.dart';
 import '../services/alert_service.dart';
+import '../providers/theme_provider.dart';
 
 class AlertDetailsScreen extends StatefulWidget {
   final String alertId;
@@ -47,21 +49,16 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+
     return Scaffold(
+      backgroundColor: isDarkMode ? Color(0xFF121212) : Colors.grey[50],
       appBar: AppBar(
         title: const Text('Alert Details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              // TODO: Implement share functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Share functionality coming soon')),
-              );
-            },
-          ),
-        ],
+        backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black87,
+        elevation: 0,
       ),
       body: FutureBuilder<EmergencyAlert?>(
         future: _alertFuture,
@@ -98,10 +95,14 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: alert.type.color.withAlpha(38),
+                    color: isDarkMode
+                        ? alert.type.color.withAlpha(50)
+                        : alert.type.color.withAlpha(38),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: alert.type.color.withAlpha(38),
+                      color: isDarkMode
+                          ? alert.type.color.withAlpha(70)
+                          : alert.type.color.withAlpha(38),
                     ),
                   ),
                   child: Row(
@@ -156,9 +157,10 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                 // Alert title
                 Text(
                   alert.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 24,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -167,94 +169,40 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                 Text(
                   'Posted ${_formatTimestamp(alert.timestamp)}',
                   style: TextStyle(
-                    color: Colors.grey[600],
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                     fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Description
-                const Text(
+                Text(
                   'Description',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   alert.description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     height: 1.5,
+                    color: isDarkMode ? Colors.grey[300] : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Image (if available)
-                if (alert.imageUrl != null) ...[
-                  const Text(
-                    'Image',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey[200],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        alert.imageUrl!,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                              color: alert.type.color,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.broken_image,
-                                  size: 48,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Could not load image',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
+                // Image (if available) - Placed between description and source
+                if (alert.imageUrl != null && alert.imageUrl!.isNotEmpty) ...[
+                  GestureDetector(
+                    onTap: () {
                       showDialog(
                         context: context,
                         builder: (context) => Dialog(
+                          backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
                           child: Container(
                             constraints: BoxConstraints(
                               maxWidth: MediaQuery.of(context).size.width,
@@ -279,8 +227,24 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                                       alert.imageUrl!,
                                       fit: BoxFit.contain,
                                       errorBuilder: (context, error, stackTrace) {
-                                        return const Center(
-                                          child: Text('Error loading image'),
+                                        return Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                Icons.broken_image,
+                                                size: 48,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'Could not load image',
+                                                style: TextStyle(
+                                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         );
                                       },
                                     ),
@@ -292,58 +256,146 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.fullscreen),
-                    label: const Text('View Full Image'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: alert.type.color,
-                      foregroundColor: Colors.white,
+                    child: Hero(
+                      tag: 'alert_image_${alert.id}',
+                      child: Container(
+                        width: double.infinity,
+                        height: 250,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Image.network(
+                                  alert.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded /
+                                                loadingProgress.expectedTotalBytes!
+                                            : null,
+                                        color: alert.type.color,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.broken_image,
+                                            size: 48,
+                                            color: Colors.grey,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Could not load image',
+                                            style: TextStyle(
+                                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              Positioned(
+                                right: 8,
+                                bottom: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(
+                                    Icons.fullscreen,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                 ],
 
                 // Source
-                if (alert.source != null) ...[
-                  const Text(
+                if (alert.source != null && alert.source!.isNotEmpty) ...[
+                  Text(
                     'Source',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     alert.source!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
+                      color: isDarkMode ? Colors.grey[300] : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 24),
                 ],
 
                 // Location
-                if (alert.location != null) ...[
-                  const Text(
+                if (alert.location != null && alert.location!.isNotEmpty) ...[
+                  Text(
                     'Location',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, color: alert.type.color),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          alert.location!,
-                          style: const TextStyle(
-                            fontSize: 16,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_on, color: alert.type.color),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            alert.location!,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDarkMode ? Colors.grey[300] : Colors.black87,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   if (alert.latitude != null && alert.longitude != null) ...[
                     const SizedBox(height: 16),
@@ -365,96 +417,50 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                   const SizedBox(height: 24),
                 ],
 
-                // Actions
-                const Text(
-                  'Actions',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                // Related services - only show for Emergency and Natural Disaster alerts
+                if (alert.type == AlertType.emergency || alert.type == AlertType.naturalDisaster) ...[
+                  Text(
+                    'Related Emergency Services',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          // TODO: Implement share functionality
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content:
-                                    Text('Share functionality coming soon')),
-                          );
-                        },
-                        icon: const Icon(Icons.share),
-                        label: const Text('Share'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Find emergency services near this alert location:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _buildServiceButton(
+                        context,
+                        'Police',
+                        Icons.local_police,
+                        Colors.blue,
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          // TODO: Implement report functionality
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content:
-                                    Text('Report functionality coming soon')),
-                          );
-                        },
-                        icon: const Icon(Icons.flag),
-                        label: const Text('Report'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                      const SizedBox(width: 8),
+                      _buildServiceButton(
+                        context,
+                        'Medical',
+                        Icons.medical_services,
+                        Colors.red,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Related services
-                const Text(
-                  'Related Emergency Services',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                      const SizedBox(width: 8),
+                      _buildServiceButton(
+                        context,
+                        'Fire',
+                        Icons.local_fire_department,
+                        Colors.orange,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Find emergency services near this alert location:',
-                  style: TextStyle(
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildServiceButton(
-                      context,
-                      'Police',
-                      Icons.local_police,
-                      Colors.blue,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildServiceButton(
-                      context,
-                      'Medical',
-                      Icons.medical_services,
-                      Colors.red,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildServiceButton(
-                      context,
-                      'Fire',
-                      Icons.local_fire_department,
-                      Colors.orange,
-                    ),
-                  ],
-                ),
+                ],
               ],
             ),
           );
