@@ -5,7 +5,7 @@ import '../services/location_service.dart';
 import '../providers/theme_provider.dart';
 import 'service_details_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'package:url_launcher/url_launcher.dart';
 
 class SearchScreen extends StatefulWidget {
   final ServiceType initialServiceType;
@@ -190,13 +190,13 @@ class _SearchScreenState extends State<SearchScreen> {
         final Uri uri = Uri.parse(uriString);
         debugPrint('Attempting to launch: $uriString');
 
-        if (await url_launcher.canLaunchUrl(uri)) {
-          launched = await url_launcher.launchUrl(uri);
-          if (launched) {
-            debugPrint('Successfully launched: $uriString');
-            break;
-          }
+        
+         launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (launched) {
+          debugPrint('Successfully launched: $uriString');
+          break;
         }
+        
       }
 
       if (!launched) {

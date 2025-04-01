@@ -55,15 +55,15 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       bool launched = false;
       for (final uriString in uriFormats) {
         final Uri uri = Uri.parse(uriString);
-        debugPrint('Attempting to launch: $uriString');
-        
-        if (await canLaunchUrl(uri)) {
-          launched = await launchUrl(uri);
-          if (launched) {
-            debugPrint('Successfully launched: $uriString');
-            break;
-          }
+        debugPrint('Attempting to launch A: $uriString');
+
+
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (launched) {
+          debugPrint('Successfully launched: $uriString');
+          break;
         }
+
       }
       
       if (!launched) {
