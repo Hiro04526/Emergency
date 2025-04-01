@@ -14,7 +14,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize services
+  // Initialize location service
   final locationService = LocationService();
   await locationService.initialize();
   
@@ -24,14 +24,15 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.initialize();
   
-  // Initialize alert service
-  final alertService = AlertService();
-  alertService.initialize(notificationService);
-
+  // Initialize Supabase first
   await supabase.Supabase.initialize(
     url: 'https://aofppzgxmwazyhmzwpgr.supabase.co/',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvZnBwemd4bXdhenlobXp3cGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2NjgzMTYsImV4cCI6MjA1ODI0NDMxNn0.-PvVy-pXJIr69jj_xx32-L27zZhyFjYt8LLjVPX1oh4',
   );
+
+  // Initialize alert service after Supabase
+  final alertService = AlertService();
+  await alertService.initialize(notificationService);
   
   // Initialize auth service
   final authService = AuthService();
