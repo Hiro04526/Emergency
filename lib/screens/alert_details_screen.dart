@@ -28,8 +28,29 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
   }
 
   Future<void> _loadAlertDetails() async {
-    _alertFuture = Future.value(
-        _alertService.alerts.firstWhere((a) => a.id == widget.alertId));
+    _alertFuture = Future(() async {
+      try {
+        // First try to find the alert in the local cache
+        final cachedAlert = _alertService.alerts.firstWhere(
+          (a) => a.id == widget.alertId,
+          orElse: () => throw Exception('Alert not found in cache'),
+        );
+        return cachedAlert;
+      } catch (e) {
+        // If not found in cache, try to fetch from database
+        await _alertService.refreshAlerts();
+        try {
+          // Check again in the refreshed alerts
+          return _alertService.alerts.firstWhere(
+            (a) => a.id == widget.alertId,
+            orElse: () => throw Exception('Alert not found'),
+          );
+        } catch (e) {
+          // Re-throw if still not found
+          rethrow;
+        }
+      }
+    });
   }
 
   Future<void> _openMap(double latitude, double longitude) async {

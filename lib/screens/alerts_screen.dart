@@ -55,18 +55,28 @@ class _AlertsScreenState extends State<AlertsScreen>
 
     try {
       final alerts = await _alertService.getAlerts();
-      setState(() {
-        _alerts = alerts;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
       if (mounted) {
+        setState(() {
+          _alerts = alerts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading alerts in AlertsScreen: $e');
+      if (mounted) {
+        setState(() {
+          _alerts = [];
+          _isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading alerts: $e')),
+          SnackBar(
+            content: Text('Error loading alerts. Please try again.'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: _loadAlerts,
+            ),
+          ),
         );
       }
     }
@@ -141,11 +151,43 @@ class _AlertsScreenState extends State<AlertsScreen>
 
     if (alerts.isEmpty) {
       return Center(
-        child: Text(
-          'No alerts found',
-          style: TextStyle(
-            color: isDarkMode ? Colors.white70 : Colors.black54,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 64,
+              color: isDarkMode ? Colors.white54 : Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No alerts found',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check back later for updates',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.white54 : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadAlerts,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDarkMode ? Colors.blue[700] : Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -196,12 +238,14 @@ class _AlertsScreenState extends State<AlertsScreen>
             children: [
               // Alert header
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Alert type icon
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: alert.type.color.withAlpha(isDarkMode ? 50 : 38),
-                      borderRadius: BorderRadius.circular(8),
+                      color: alert.type.color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       alert.type.icon,
@@ -210,106 +254,107 @@ class _AlertsScreenState extends State<AlertsScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Alert details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          alert.type.name,
+                          alert.title,
                           style: TextStyle(
-                            color: alert.type.color,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
                           ),
                         ),
-                        Text(
-                          _formatTimestamp(alert.timestamp),
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                            fontSize: 12,
-                          ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: alert.type.color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                alert.type.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: alert.type.color,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.access_time,
+                              size: 12,
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatTimestamp(alert.timestamp),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  if (alert.isActive)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withAlpha(isDarkMode ? 50 : 38),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'ACTIVE',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              // Alert title and description
-              Text(
-                alert.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              // Alert description
               Text(
                 alert.description,
                 style: TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
-                  color: isDarkMode ? Colors.white70 : Colors.black87,
+                  fontSize: 15,
+                  color: isDarkMode ? Colors.grey[300] : Colors.grey[800],
                 ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 12),
-
-              // Location and source
-              if (alert.location != null) ...[
-                Row(
-                  children: [
-                    Icon(Icons.location_on_outlined,
-                        size: 16, color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+              const SizedBox(height: 16),
+              // Alert footer with location and source
+              Row(
+                children: [
+                  if (alert.location != null) ...[
+                    Icon(
+                      Icons.location_on,
+                      size: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
-                    Text(
-                      alert.location!,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        fontSize: 14,
+                    Expanded(
+                      child: Text(
+                        alert.location!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
-                ),
-              ],
-              if (alert.source != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.source_outlined,
-                        size: 16, color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                  if (alert.source != null) ...[
+                    Icon(
+                      Icons.source,
+                      size: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Source: ${alert.source}',
                       style: TextStyle(
+                        fontSize: 13,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        fontSize: 14,
                       ),
                     ),
                   ],
-                ),
-              ],
+                ],
+              ),
             ],
           ),
         ),
@@ -321,14 +366,16 @@ class _AlertsScreenState extends State<AlertsScreen>
     final now = DateTime.now();
     final difference = now.difference(timestamp);
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
-    } else {
+    if (difference.inMinutes < 1) {
       return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} min ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hr ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
   }
 }

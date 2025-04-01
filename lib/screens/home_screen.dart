@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final LocationService _locationService = LocationService();
   final AlertService _alertService = AlertService();
   List<EmergencyAlert> _recentAlerts = [];
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -33,10 +34,26 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadRecentAlerts();
   }
 
-  void _loadRecentAlerts() {
-    setState(() {
-      _recentAlerts = _alertService.getRecentAlerts(limit: 10);
-    });
+  Future<void> _loadRecentAlerts() async {
+    try {
+      // Ensure we have alerts loaded
+      await _alertService.getAlerts();
+      
+      if (mounted) {
+        setState(() {
+          _recentAlerts = _alertService.getRecentAlerts(limit: 2);
+          _isRefreshing = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading recent alerts: $e');
+      if (mounted) {
+        setState(() {
+          _recentAlerts = [];
+          _isRefreshing = false;
+        });
+      }
+    }
   }
 
   @override
@@ -262,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
-            ElevatedButton(
+            TextButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -271,122 +288,203 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 2,
-              ),
-              child: const Text(
-                'View All',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    'View All',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12,
+                    color: Colors.blue,
+                  ),
+                ],
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
         _recentAlerts.isEmpty
-            ? Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 20.0),
-                child: Center(
-                  child: Text(
-                    'No recent alerts',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: isDarkMode ? Colors.grey[400] : Colors.grey,
-                    ),
-                  ),
-                ),
-              )
-            : Container(
-                height: 300, // Fixed height for the scrollable container
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDarkMode 
-                        ? Colors.black.withValues(alpha: 0.3) 
-                        : Colors.grey.withValues(alpha: 0.2),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
+          ? Container(
+              decoration: BoxDecoration(
+                color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+              child: Center(
                 child: Column(
                   children: [
-                    // Scroll indicator at the top
-                    Container(
-                      width: 50,
-                      height: 4,
-                      margin: const EdgeInsets.only(top: 8, bottom: 4),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
-                        borderRadius: BorderRadius.circular(10),
+                    Icon(
+                      Icons.notifications_off_outlined,
+                      size: 40,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[500],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No alerts at this time',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
                       ),
                     ),
-                    // Alerts list
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                        itemCount: _recentAlerts.length,
-                        itemBuilder: (context, index) {
-                          return _buildAlertItem(_recentAlerts[index]);
-                        },
+                    const SizedBox(height: 8),
+                    Text(
+                      'Stay tuned for emergency notifications',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
                       ),
-                    ),
-                    // Scroll indicator at the bottom
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? Colors.grey[800] : Colors.grey[100],
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(12),
-                          bottomRight: Radius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.keyboard_arrow_down,
-                              size: 16, color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Scroll for more alerts',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
+            )
+          : Container(
+              decoration: BoxDecoration(
+                color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+              ),
+              child: Column(
+                children: [
+                  // Header with refresh button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Latest Updates',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.refresh,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(),
+                          onPressed: () async {
+                            setState(() {
+                              _isRefreshing = true;
+                            });
+                            
+                            try {
+                              await _alertService.refreshAlerts();
+                              await _loadRecentAlerts();
+                            } catch (e) {
+                              print('Error refreshing alerts: $e');
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error refreshing alerts')),
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isRefreshing = false;
+                                });
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Divider
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                  ),
+                  // Alerts list
+                  _isRefreshing 
+                    ? Container(
+                        height: 200,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(0),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _recentAlerts.length,
+                        separatorBuilder: (context, index) => Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                          indent: 16,
+                          endIndent: 16,
+                        ),
+                        itemBuilder: (context, index) {
+                          return _buildAlertCard(_recentAlerts[index]);
+                        },
+                      ),
+                  // View all alerts button
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.grey[850] : Colors.grey[100],
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AlertsScreen(),
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(12),
+                            bottomRight: Radius.circular(12),
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        'View All Alerts',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
       ],
     );
   }
 
-  Widget _buildAlertItem(EmergencyAlert alert) {
+  Widget _buildAlertCard(EmergencyAlert alert) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     
-    return GestureDetector(
+    return InkWell(
       onTap: () {
         Navigator.push(
           context,
@@ -395,52 +493,43 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: isDarkMode 
-                ? Colors.black.withValues(alpha: 0.3) 
-                : Colors.grey.withValues(alpha: 0.1),
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Alert type icon
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: alert.type.color.withValues(alpha: 26), // 0.1 * 255 ≈ 26
-                borderRadius: BorderRadius.circular(8),
+                color: alert.type.color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                _getAlertIconData(alert.type),
+                alert.type.icon,
                 color: alert.type.color,
                 size: 24,
               ),
             ),
             const SizedBox(width: 12),
+            // Alert content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Alert title
                   Text(
                     alert.title,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+                  // Alert description
                   Text(
                     alert.description,
                     style: TextStyle(
@@ -451,11 +540,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
+                  // Alert metadata
                   Row(
                     children: [
+                      // Alert type
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: alert.type.color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          alert.type.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: alert.type.color,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Alert time
                       Icon(
                         Icons.access_time,
-                        size: 14,
+                        size: 12,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                       const SizedBox(width: 4),
@@ -466,26 +574,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      if (alert.location != null) ...[
-                        Icon(
-                          Icons.location_on,
-                          size: 14,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            alert.location!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ],
