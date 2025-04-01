@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth_screen.dart';
 import 'services/location_service.dart';
@@ -14,6 +15,9 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Load environment variables
+  await dotenv.load();
+  
   // Initialize location service
   final locationService = LocationService();
   await locationService.initialize();
@@ -24,10 +28,10 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.initialize();
   
-  // Initialize Supabase first
+  // Initialize Supabase first using environment variables
   await supabase.Supabase.initialize(
-    url: 'https://aofppzgxmwazyhmzwpgr.supabase.co/',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvZnBwemd4bXdhenlobXp3cGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2NjgzMTYsImV4cCI6MjA1ODI0NDMxNn0.-PvVy-pXJIr69jj_xx32-L27zZhyFjYt8LLjVPX1oh4',
+    url: dotenv.env['SUPABASE_URL'] ?? '',
+    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
   // Initialize alert service after Supabase
