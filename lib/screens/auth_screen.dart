@@ -6,7 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({Key? key}) : super(key: key);
+  AuthScreen({Key? key}) : super(key: key);
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -70,7 +70,7 @@ class _AuthScreenState extends State<AuthScreen> {
         print('Auth sign-up successful: ${response.user!.email}');
         
         try {
-          final result = await supabase.Supabase.instance.client
+          await supabase.Supabase.instance.client
               .rpc('register_user', params: {
                 'p_user_id': response.user!.id,
                 'p_user_email': email,
@@ -131,13 +131,13 @@ class _AuthScreenState extends State<AuthScreen> {
           // Success - navigate to Home
           Navigator.pushReplacement(
             context, 
-            MaterialPageRoute(builder: (context) => const HomeScreen())
+            MaterialPageRoute(builder: (context) => HomeScreen())
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login failed. Please check your credentials.')),
+            SnackBar(content: Text('Login failed. Please check your credentials.')),
           );
         }
       }
@@ -158,14 +158,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.white,
         body: Center(
           child: CircularProgressIndicator(
-            color: const Color(0xFF2979FF),
+            color: Color(0xFF2979FF),
           ),
         ),
       );
@@ -179,7 +177,7 @@ class _AuthScreenState extends State<AuthScreen> {
             // Main content area
             Expanded(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+                duration: Duration(milliseconds: 300),
                 transitionBuilder: (Widget child, Animation<double> animation) {
                   return FadeTransition(
                     opacity: animation,
@@ -198,7 +196,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
             // Bottom navigation buttons
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.0),
               child: SizedBox(
                 width: double.infinity,
                 child: Row(
@@ -209,7 +207,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? "Don't have an account? "
                           : "Already have an account? ",
                       style: TextStyle(
-                        color: Colors.grey[700],
+                        color: Colors.grey,
                         fontSize: 14,
                       ),
                     ),
@@ -218,7 +216,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: Text(
                         _showLogin ? 'Sign Up' : 'Login',
                         style: TextStyle(
-                          color: const Color(0xFF2979FF),
+                          color: Color(0xFF2979FF),
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -236,12 +234,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildLoginForm() {
     return SingleChildScrollView(
-      key: const ValueKey<String>('login'),
-      padding: const EdgeInsets.all(24.0),
+      key: ValueKey<String>('login'),
+      padding: EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 40),
+          SizedBox(height: 40),
           // Logo and app name
           Center(
             child: SvgPicture.asset(
@@ -250,17 +248,17 @@ class _AuthScreenState extends State<AuthScreen> {
               width: 180,
             ),
           ),
-          const SizedBox(height: 48),
+          SizedBox(height: 48),
 
           // Email field
-          const Text(
+          Text(
             'Email',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
@@ -273,20 +271,20 @@ class _AuthScreenState extends State<AuthScreen> {
               filled: true,
               fillColor: Colors.grey[100],
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Password field
-          const Text(
+          Text(
             'Password',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _passwordController,
             obscureText: true,
@@ -299,10 +297,10 @@ class _AuthScreenState extends State<AuthScreen> {
               filled: true,
               fillColor: Colors.grey[100],
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Login button in form
           SizedBox(
@@ -311,13 +309,13 @@ class _AuthScreenState extends State<AuthScreen> {
             child: ElevatedButton(
               onPressed: _handleLogin,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2979FF),
+                backgroundColor: Color(0xFF2979FF),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Login'),
+              child: Text('Login'),
             ),
           ),
         ],
@@ -327,12 +325,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildSignUpForm() {
     return SingleChildScrollView(
-      key: const ValueKey<String>('signup'),
-      padding: const EdgeInsets.all(24.0),
+      key: ValueKey<String>('signup'),
+      padding: EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 40),
+          SizedBox(height: 40),
           // Logo and app name
           Center(
             child: SvgPicture.asset(
@@ -341,17 +339,17 @@ class _AuthScreenState extends State<AuthScreen> {
               width: 180,
             ),
           ),
-          const SizedBox(height: 48),
+          SizedBox(height: 48),
 
           // Phone Number field
-          const Text(
+          Text(
             'Phone Number',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _phoneController,
             keyboardType: TextInputType.phone,
@@ -364,20 +362,20 @@ class _AuthScreenState extends State<AuthScreen> {
               filled: true,
               fillColor: Colors.grey[100],
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Email field
-          const Text(
+          Text(
             'Email',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
@@ -390,20 +388,20 @@ class _AuthScreenState extends State<AuthScreen> {
               filled: true,
               fillColor: Colors.grey[100],
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Password field
-          const Text(
+          Text(
             'Password',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _passwordController,
             obscureText: true,
@@ -416,20 +414,20 @@ class _AuthScreenState extends State<AuthScreen> {
               filled: true,
               fillColor: Colors.grey[100],
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Name field
-          const Text(
+          Text(
             'Name',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _nameController,
             decoration: InputDecoration(
@@ -441,10 +439,10 @@ class _AuthScreenState extends State<AuthScreen> {
               filled: true,
               fillColor: Colors.grey[100],
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Government ID selector
           InkWell(
@@ -452,7 +450,7 @@ class _AuthScreenState extends State<AuthScreen> {
               print('Add government ID tapped');
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(8),
@@ -466,12 +464,12 @@ class _AuthScreenState extends State<AuthScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Icon(
                     Icons.camera_alt_outlined,
                     color: Colors.grey[600],
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Icon(
                     Icons.photo_outlined,
                     color: Colors.grey[600],
@@ -480,7 +478,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Sign Up button in form
           SizedBox(
@@ -497,22 +495,22 @@ class _AuthScreenState extends State<AuthScreen> {
                   if (success && mounted) {
                     Navigator.pushReplacement(
                       context, 
-                      MaterialPageRoute(builder: (context) => const HomeScreen())
+                      MaterialPageRoute(builder: (context) => HomeScreen())
                     );
                   } else if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Sign up failed. Please try again.')),
+                      SnackBar(content: Text('Sign up failed. Please try again.')),
                     );
                   }
                 },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2979FF),
+                backgroundColor: Color(0xFF2979FF),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Sign Up'),
+              child: Text('Sign Up'),
             ),
           ),
         ],

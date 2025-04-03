@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/emergency_alert.dart';
 import '../services/alert_service.dart';
 import 'alert_details_screen.dart';
+import '../providers/theme_provider.dart';
+import 'package:provider/provider.dart';
+import 'report_alert_screen.dart';
 
 class AlertsScreen extends StatefulWidget {
   final AlertType? initialAlertType;
@@ -52,18 +55,28 @@ class _AlertsScreenState extends State<AlertsScreen>
 
     try {
       final alerts = await _alertService.getAlerts();
-      setState(() {
-        _alerts = alerts;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
       if (mounted) {
+        setState(() {
+          _alerts = alerts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading alerts in AlertsScreen: $e');
+      if (mounted) {
+        setState(() {
+          _alerts = [];
+          _isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading alerts: $e')),
+          SnackBar(
+            content: Text('Error loading alerts. Please try again.'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: _loadAlerts,
+            ),
+          ),
         );
       }
     }
@@ -71,12 +84,21 @@ class _AlertsScreenState extends State<AlertsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+
     return Scaffold(
+      backgroundColor: isDarkMode ? Color(0xFF121212) : Colors.white,
       appBar: AppBar(
         title: const Text('Emergency Alerts'),
+        backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.blue,
+        elevation: isDarkMode ? 0 : 4,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
+          indicatorColor: isDarkMode ? Colors.white : null,
+          labelColor: Colors.white,
+          unselectedLabelColor: isDarkMode ? Colors.white70 : Colors.white70,
           tabs: [
             const Tab(text: 'All'),
             ...AlertType.values.map((type) => Tab(text: type.name)).toList(),
@@ -84,7 +106,9 @@ class _AlertsScreenState extends State<AlertsScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(
+              color: isDarkMode ? Colors.white : Colors.blue,
+            ))
           : TabBarView(
               controller: _tabController,
               children: [
@@ -99,25 +123,79 @@ class _AlertsScreenState extends State<AlertsScreen>
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Navigate to report alert screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Report Alert feature coming soon')),
+          // Get the currently selected alert type based on tab index
+          AlertType? selectedType;
+          if (_tabController.index > 0) {
+            // Index 0 is "All", so we subtract 1 to get the correct AlertType
+            selectedType = AlertType.values[_tabController.index - 1];
+          }
+          
+          // Navigate to report alert screen with the selected type
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ReportAlertScreen(
+                initialAlertType: selectedType,
+              ),
+            ),
           );
         },
+        backgroundColor: isDarkMode ? Colors.blue : null,
         child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildAlertsList(List<EmergencyAlert> alerts) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+
     if (alerts.isEmpty) {
-      return const Center(
-        child: Text('No alerts found'),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 64,
+              color: isDarkMode ? Colors.white54 : Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No alerts found',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check back later for updates',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.white54 : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadAlerts,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDarkMode ? Colors.blue[700] : Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _loadAlerts,
+      color: isDarkMode ? Colors.white : Colors.blue,
+      backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: alerts.length,
@@ -130,15 +208,19 @@ class _AlertsScreenState extends State<AlertsScreen>
   }
 
   Widget _buildAlertCard(EmergencyAlert alert) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: alert.type.color.withAlpha(76),
+          color: alert.type.color.withAlpha(isDarkMode ? 100 : 76),
           width: 1,
         ),
       ),
+      elevation: isDarkMode ? 2 : 1,
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -156,12 +238,14 @@ class _AlertsScreenState extends State<AlertsScreen>
             children: [
               // Alert header
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Alert type icon
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: alert.type.color.withAlpha(38),
-                      borderRadius: BorderRadius.circular(8),
+                      color: alert.type.color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       alert.type.icon,
@@ -170,104 +254,107 @@ class _AlertsScreenState extends State<AlertsScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Alert details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          alert.type.name,
+                          alert.title,
                           style: TextStyle(
-                            color: alert.type.color,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
                           ),
                         ),
-                        Text(
-                          _formatTimestamp(alert.timestamp),
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: alert.type.color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                alert.type.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: alert.type.color,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.access_time,
+                              size: 12,
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatTimestamp(alert.timestamp),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  if (alert.isActive)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withAlpha(38),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'ACTIVE',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              // Alert title and description
-              Text(
-                alert.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              // Alert description
               Text(
                 alert.description,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isDarkMode ? Colors.grey[300] : Colors.grey[800],
                 ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 12),
-
-              // Location and source
-              if (alert.location != null) ...[
-                Row(
-                  children: [
-                    Icon(Icons.location_on_outlined,
-                        size: 16, color: Colors.grey[600]),
+              const SizedBox(height: 16),
+              // Alert footer with location and source
+              Row(
+                children: [
+                  if (alert.location != null) ...[
+                    Icon(
+                      Icons.location_on,
+                      size: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
-                    Text(
-                      alert.location!,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
+                    Expanded(
+                      child: Text(
+                        alert.location!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
-                ),
-              ],
-              if (alert.source != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.source_outlined,
-                        size: 16, color: Colors.grey[600]),
+                  if (alert.source != null) ...[
+                    Icon(
+                      Icons.source,
+                      size: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Source: ${alert.source}',
                       style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
+                        fontSize: 13,
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                     ),
                   ],
-                ),
-              ],
+                ],
+              ),
             ],
           ),
         ),
@@ -279,14 +366,16 @@ class _AlertsScreenState extends State<AlertsScreen>
     final now = DateTime.now();
     final difference = now.difference(timestamp);
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
-    } else {
+    if (difference.inMinutes < 1) {
       return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} min ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hr ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
   }
 }

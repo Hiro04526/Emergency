@@ -307,9 +307,8 @@ class DatabaseService {
   Future<List<EmergencyAlert>> getAlerts() async {
     try {
       final response = await _client
-          .from('alert')
-          .select()
-          .order('timestamp', ascending: false);
+          .rpc('fetch_alerts')
+          .select();
 
       if (response.isEmpty) {
         return [];
@@ -328,12 +327,13 @@ class DatabaseService {
       await _client.from('alert').insert({
         'title': alert.title,
         'description': alert.description,
-        'type': alert.type.name,
+        'type': alert.type.name.toLowerCase(),
         'source': alert.source,
         'location': alert.location,
         'latitude': alert.latitude,
         'longitude': alert.longitude,
         'is_active': alert.isActive,
+        'created_at': DateTime.now().toIso8601String(),
       });
 
       return true;
@@ -390,8 +390,6 @@ class DatabaseService {
         return 'fire';
       case ServiceType.government:
         return 'government';
-      default:
-        return 'police';
     }
   }
 
@@ -414,16 +412,16 @@ class DatabaseService {
     }
 
     return EmergencyAlert(
-      id: data['id'],
-      title: data['title'],
-      description: data['description'],
+      id: data['id']?.toString() ?? 'unknown',
+      title: data['title']?.toString() ?? 'Alert',
+      description: data['description']?.toString() ?? 'No description available',
       type: alertType,
-      timestamp: DateTime.parse(data['timestamp']),
-      source: data['source'],
-      location: data['location'],
-      latitude: data['latitude'],
-      longitude: data['longitude'],
-      isActive: data['is_active'] ?? true,
+      timestamp: data['created_at'] != null ? DateTime.parse(data['created_at']) : DateTime.now(),
+      source: data['source']?.toString(),
+      location: data['location']?.toString(),
+      latitude: data['latitude'] != null ? double.tryParse(data['latitude'].toString()) : null,
+      longitude: data['longitude'] != null ? double.tryParse(data['longitude'].toString()) : null,
+      isActive: data['is_active'] == true,
     );
   }
   

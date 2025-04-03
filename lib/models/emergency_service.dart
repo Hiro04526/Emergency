@@ -39,8 +39,6 @@ extension ServiceTypeExtension on ServiceType {
         return const Color(0xFFFF8C00);
       case ServiceType.government:
         return const Color(0xFF4CAF50);
-      default:
-        return const Color(0xFF757575); // Default gray color
     }
   }
 }
@@ -52,12 +50,13 @@ class EmergencyService {
   final String level;
   final String? description;
   final double distanceKm;
-  final String? contact;
+  final String? contact;  // Legacy field
   final List<String> contacts;
   final double? latitude;
   final double? longitude;
   final String? addedBy;
   final String? verifiedBy;
+  final bool isVerified;
 
   EmergencyService({
     required this.id,
@@ -72,6 +71,7 @@ class EmergencyService {
     this.longitude,
     this.addedBy,
     this.verifiedBy,
+    this.isVerified = false,
   }) : contacts = contacts ?? (contact != null ? [contact] : []);
 
   // Create a copy with modified properties
@@ -88,6 +88,7 @@ class EmergencyService {
     double? longitude,
     String? addedBy,
     String? verifiedBy,
+    bool? isVerified,
   }) {
     return EmergencyService(
       id: id ?? this.id,
@@ -102,6 +103,7 @@ class EmergencyService {
       longitude: longitude ?? this.longitude,
       addedBy: addedBy ?? this.addedBy,
       verifiedBy: verifiedBy ?? this.verifiedBy,
+      isVerified: isVerified ?? this.isVerified,
     );
   }
 
@@ -135,7 +137,20 @@ class EmergencyService {
       }
     }
     
-    // Create with default verification data for development purposes
+    // Handle contacts which might be a list or a single string
+    List<String> contacts = [];
+    if (json['contacts'] != null) {
+      if (json['contacts'] is List) {
+        contacts = List<String>.from(json['contacts']);
+      } else if (json['contacts'] is String) {
+        // If contacts is a single string, convert to a list
+        contacts = [json['contacts']];
+      }
+    } else if (json['contact'] != null) {
+      // Legacy support: use contact field if contacts is not available
+      contacts = [json['contact']];
+    }
+    
     return EmergencyService(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Unknown Service',
@@ -144,13 +159,12 @@ class EmergencyService {
       description: json['description'],
       distanceKm: distanceKm,
       contact: json['contact'],
-      contacts: json['contacts'] != null ? List<String>.from(json['contacts']) : 
-               (json['contact'] != null ? [json['contact']] : []),
+      contacts: contacts,
       latitude: json['latitude'] is double ? json['latitude'] : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
       longitude: json['longitude'] is double ? json['longitude'] : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
-      // Use "None" as default fallback
       addedBy: json['added_by'] ?? "None",
       verifiedBy: json['verified_by'] ?? "None",
+      isVerified: json['is_verified'] == true || json['isVerified'] == true,
     );
   }
 }

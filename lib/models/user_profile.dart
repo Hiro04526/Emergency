@@ -4,11 +4,13 @@ class UserProfile {
   final String? name;
   final String? phoneNumber;
   final String? homeAddress;
+  final int? avatarIndex;
 
   UserProfile({
     this.name,
     this.phoneNumber,
     this.homeAddress,
+    this.avatarIndex,
   });
 
   // Check if the profile has been set up with basic information
@@ -19,11 +21,13 @@ class UserProfile {
     String? name,
     String? phoneNumber,
     String? homeAddress,
+    int? avatarIndex,
   }) {
     return UserProfile(
       name: name ?? this.name,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       homeAddress: homeAddress ?? this.homeAddress,
+      avatarIndex: avatarIndex ?? this.avatarIndex,
     );
   }
 }
@@ -37,11 +41,13 @@ class UserProfileProvider extends ChangeNotifier {
     String? name,
     String? phoneNumber,
     String? homeAddress,
+    int? avatarIndex,
   }) {
     _profile = _profile.copyWith(
       name: name,
       phoneNumber: phoneNumber,
       homeAddress: homeAddress,
+      avatarIndex: avatarIndex,
     );
     notifyListeners();
   }
