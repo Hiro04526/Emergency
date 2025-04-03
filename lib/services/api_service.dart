@@ -122,8 +122,12 @@ class ApiService {
       final cachedService =
           allServices.where((service) => service.id == id).firstOrNull;
       if (cachedService != null) {
-        debugPrint('ApiService: Found service in cache: ${cachedService.name}');
-        return cachedService;
+        debugPrint('ApiService: Found service in cache: ${cachedService.name} with ID: ${cachedService.id}');
+        // Get verification info for this service
+        debugPrint('ApiService: About to call _getVerificationInfo for cached service');
+        final verifiedService = await _getVerificationInfo(cachedService);
+        debugPrint('ApiService: Received verified service with addedBy: ${verifiedService.addedBy}, verifiedBy: ${verifiedService.verifiedBy}');
+        return verifiedService;
       }
       
       debugPrint('ApiService: Service not found in cache, checking all service types');
@@ -135,8 +139,12 @@ class ApiService {
         final service =
             services.where((service) => service.id == id).firstOrNull;
         if (service != null) {
-          debugPrint('ApiService: Found service in ${type.name}: ${service.name}');
-          return service;
+          debugPrint('ApiService: Found service in ${type.name}: ${service.name} with ID: ${service.id}');
+          // Get verification info for this service
+          debugPrint('ApiService: About to call _getVerificationInfo for service from type ${type.name}');
+          final verifiedService = await _getVerificationInfo(service);
+          debugPrint('ApiService: Received verified service with addedBy: ${verifiedService.addedBy}, verifiedBy: ${verifiedService.verifiedBy}');
+          return verifiedService;
         }
       }
       
@@ -145,6 +153,48 @@ class ApiService {
     } catch (e) {
       debugPrint('Error getting service by ID: $e');
       return null;
+    }
+  }
+
+  // Get verification information for a service
+  Future<EmergencyService> _getVerificationInfo(EmergencyService service) async {
+    debugPrint('_getVerificationInfo called for service: ${service.name} with ID: ${service.id}');
+    
+    try {
+      debugPrint('About to call getUniqueUsernames for service ID: ${service.id}');
+      // Fetch unique usernames associated with this service
+      final usernames = await _databaseService.getUniqueUsernames(service.id);
+      debugPrint('Fetched usernames for service ${service.id}: $usernames');
+      
+      // Use the first username as addedBy if available, otherwise use "None"
+      String? addedBy = "None"; // Default fallback
+      String? verifiedBy = "None"; // Default fallback
+      
+      if (usernames.isNotEmpty) {
+        // First username is the one who added the service
+        addedBy = usernames.first;
+        
+        // If there's a second username, use it as the verifier
+        if (usernames.length > 1) {
+          verifiedBy = usernames[1];
+        }
+      }
+      
+      // Update the service with the usernames
+      final updatedService = service.copyWith(
+        addedBy: addedBy,
+        verifiedBy: verifiedBy,
+      );
+      
+      debugPrint('Updated service - addedBy: ${updatedService.addedBy}, verifiedBy: ${updatedService.verifiedBy}');
+      return updatedService;
+    } catch (e) {
+      debugPrint('Error getting verification info: $e');
+      // Return the service with "None" values if there's an error
+      return service.copyWith(
+        addedBy: "None",
+        verifiedBy: "None",
+      );
     }
   }
 

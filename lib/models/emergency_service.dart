@@ -54,6 +54,8 @@ class EmergencyService {
   final List<String> contacts;
   final double? latitude;
   final double? longitude;
+  final String? addedBy;
+  final String? verifiedBy;
   final bool isVerified;
 
   EmergencyService({
@@ -67,6 +69,8 @@ class EmergencyService {
     List<String>? contacts,
     this.latitude,
     this.longitude,
+    this.addedBy,
+    this.verifiedBy,
     this.isVerified = false,
   }) : contacts = contacts ?? (contact != null ? [contact] : []);
 
@@ -82,6 +86,8 @@ class EmergencyService {
     List<String>? contacts,
     double? latitude,
     double? longitude,
+    String? addedBy,
+    String? verifiedBy,
     bool? isVerified,
   }) {
     return EmergencyService(
@@ -95,6 +101,8 @@ class EmergencyService {
       contacts: contacts ?? this.contacts,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      addedBy: addedBy ?? this.addedBy,
+      verifiedBy: verifiedBy ?? this.verifiedBy,
       isVerified: isVerified ?? this.isVerified,
     );
   }
@@ -154,6 +162,8 @@ class EmergencyService {
       contacts: contacts,
       latitude: json['latitude'] is double ? json['latitude'] : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
       longitude: json['longitude'] is double ? json['longitude'] : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
+      addedBy: json['added_by'] ?? "None",
+      verifiedBy: json['verified_by'] ?? "None",
       isVerified: json['is_verified'] == true || json['isVerified'] == true,
     );
   }
