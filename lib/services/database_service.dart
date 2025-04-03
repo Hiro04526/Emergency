@@ -426,4 +426,58 @@ class DatabaseService {
       isActive: data['is_active'] ?? true,
     );
   }
+  
+  // Get unique usernames for a service
+  Future<List<String>> getUniqueUsernames(String serviceId) async {
+    try {
+      debugPrint('DatabaseService: Fetching unique usernames for service ID: $serviceId');
+      debugPrint('DatabaseService: Supabase client initialized: ${_client != null}');
+      
+      // Call the RPC with the service ID in an array
+      debugPrint('DatabaseService: About to execute RPC get_unique_usernames');
+      final response = await _client
+          .rpc(
+            'get_unique_usernames',
+            params: {
+              'service_ids': [serviceId],
+            },
+          )
+          .timeout(const Duration(seconds: 5)); // Add timeout to prevent hanging
+      
+      debugPrint('DatabaseService: RPC call completed');
+      debugPrint('DatabaseService: Unique usernames response: $response');
+      debugPrint('DatabaseService: Response type: ${response.runtimeType}');
+      
+      if (response == null) {
+        debugPrint('DatabaseService: Response is null');
+        return [];
+      }
+      
+      // Extract usernames from the response
+      if (response is List) {
+        debugPrint('DatabaseService: Response is a List with ${response.length} items');
+        final usernames = List<String>.from(
+          response.map((item) => item['username']?.toString() ?? 'Unknown')
+        );
+        debugPrint('DatabaseService: Extracted usernames: $usernames');
+        return usernames;
+      } else if (response is Map) {
+        debugPrint('DatabaseService: Response is a Map');
+        // If we get a single result as a Map
+        final username = response['username']?.toString();
+        if (username != null) {
+          debugPrint('DatabaseService: Extracted username from Map: $username');
+          return [username];
+        }
+        return [];
+      } else {
+        debugPrint('DatabaseService: Response is not a List or Map, unexpected format: ${response.runtimeType}');
+        return [];
+      }
+    } catch (e, stackTrace) {
+      debugPrint('DatabaseService: Error fetching unique usernames: $e');
+      debugPrint('DatabaseService: Stack trace: $stackTrace');
+      return [];
+    }
+  }
 }

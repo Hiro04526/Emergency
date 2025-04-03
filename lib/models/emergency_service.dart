@@ -148,9 +148,9 @@ class EmergencyService {
                (json['contact'] != null ? [json['contact']] : []),
       latitude: json['latitude'] is double ? json['latitude'] : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
       longitude: json['longitude'] is double ? json['longitude'] : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
-      // Hard-coded values for development
-      addedBy: json['added_by'] ?? "John Doe",
-      verifiedBy: json['verified_by'] ?? "Enzo Panugayan",
+      // Use "None" as default fallback
+      addedBy: json['added_by'] ?? "None",
+      verifiedBy: json['verified_by'] ?? "None",
     );
   }
 }
