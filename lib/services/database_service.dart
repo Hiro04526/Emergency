@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
 import 'location_service.dart';
+import 'cache_manager_service.dart';
 
 class DatabaseService {
   // Singleton pattern
@@ -158,6 +159,21 @@ class DatabaseService {
   }) async {
     try {
       debugPrint('Searching services with type: ${type?.name}');
+      final cacheParams = {
+        'query': query,
+        'type': type?.name,
+        'region': region,
+        'category': category,
+        'classification': classification,
+        'contact': contact,
+      };
+
+      // 🗂 Try loading from cache
+      final cached = await ServiceCacheManager.getCachedResult(cacheParams);
+      if (cached != null) {
+        debugPrint('Returning cached result for: $cacheParams');
+        return cached;
+      }
       var request = _client.from('service').select();
 
       if (type != null) {
@@ -208,7 +224,9 @@ class DatabaseService {
             
             if (filteredResults.isNotEmpty) {
               debugPrint('Filtered results: ${filteredResults.length}');
-              return _calculateDistances(filteredResults);
+              final finalResults = _calculateDistances(filteredResults);
+              await ServiceCacheManager.cacheResult(cacheParams, await finalResults);
+              return finalResults;
             }
           }
         }
@@ -257,11 +275,13 @@ class DatabaseService {
           // If we don't have contacts from the contact table, use the contact from the service table
           data['contacts'] = [data['contact'].toString()];
         }
-        return EmergencyService.fromJson(data);
+       return EmergencyService.fromJson(data);
       }).toList();
       
       debugPrint('Found ${services.length} services in search');
-      return _calculateDistances(services);
+      final finalResults = _calculateDistances(services);
+      await ServiceCacheManager.cacheResult(cacheParams, await finalResults);
+      return finalResults;
     } catch (e) {
       debugPrint('Error searching services: $e');
       return [];

@@ -11,6 +11,9 @@ import 'services/auth_service.dart';
 import 'models/user_profile.dart';
 import 'providers/theme_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'services/cache_manager_service.dart';
+import 'services/database_service.dart';
+import 'models/emergency_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +36,16 @@ void main() async {
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
+
+  await ServiceCacheManager.init();
+  final DatabaseService databaseService = DatabaseService();
+
+  await Future.wait([
+    databaseService.searchServices(type: ServiceType.fireStation),
+    databaseService.searchServices(type: ServiceType.government),
+    databaseService.searchServices(type: ServiceType.medical),
+    databaseService.searchServices(type: ServiceType.police),
+  ]);
 
   // Initialize alert service after Supabase
   final alertService = AlertService();

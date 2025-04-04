@@ -1,6 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+part 'emergency_service.g.dart';
 
-enum ServiceType { police, medical, fireStation, government }
+@HiveType(typeId: 1)
+enum ServiceType {
+  @HiveField(0)
+  police,
+
+  @HiveField(1)
+  medical,
+
+  @HiveField(2)
+  fireStation,
+
+  @HiveField(3)
+  government,
+}
 
 extension ServiceTypeExtension on ServiceType {
   String get name {
@@ -43,17 +58,39 @@ extension ServiceTypeExtension on ServiceType {
   }
 }
 
-class EmergencyService {
+@HiveType(typeId: 0)
+class EmergencyService extends HiveObject {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String name;
+
+  @HiveField(2)
   final ServiceType type;
+
+  @HiveField(3)
   final String level;
+
+  @HiveField(4)
   final String? description;
+
+  @HiveField(5)
   final double distanceKm;
-  final String? contact;  // Legacy field
+
+  @HiveField(6)
+  final String? contact;
+
+  @HiveField(7)
   final List<String> contacts;
+
+  @HiveField(8)
   final double? latitude;
+
+  @HiveField(9)
   final double? longitude;
+
+  @HiveField(10)
   final bool isVerified;
 
   EmergencyService({
