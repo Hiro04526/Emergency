@@ -176,7 +176,8 @@ class _SearchScreenState extends State<SearchScreen> {
       formattedNumber = '+$formattedNumber';
     }
 
-    debugPrint('Formatted phone number: $formattedNumber from original: $phoneNumber');
+    debugPrint(
+        'Formatted phone number: $formattedNumber from original: $phoneNumber');
 
     try {
       // Try different URI formats
@@ -190,13 +191,11 @@ class _SearchScreenState extends State<SearchScreen> {
         final Uri uri = Uri.parse(uriString);
         debugPrint('Attempting to launch: $uriString');
 
-        
-         launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (launched) {
           debugPrint('Successfully launched: $uriString');
           break;
         }
-        
       }
 
       if (!launched) {

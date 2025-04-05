@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
 import 'location_service.dart';
+import 'cache_manager_service.dart';
 
 class DatabaseService {
   // Singleton pattern
@@ -158,6 +159,21 @@ class DatabaseService {
   }) async {
     try {
       debugPrint('Searching services with type: ${type?.name}');
+      final cacheParams = {
+        'query': query,
+        'type': type?.name,
+        'region': region,
+        'category': category,
+        'classification': classification,
+        'contact': contact,
+      };
+
+      // 🗂 Try loading from cache
+      final cached = await ServiceCacheManager.getCachedResult(cacheParams);
+      if (cached != null) {
+        debugPrint('Returning cached result for: $cacheParams');
+        return cached;
+      }
       var request = _client.from('service').select();
 
       if (type != null) {
@@ -208,7 +224,9 @@ class DatabaseService {
             
             if (filteredResults.isNotEmpty) {
               debugPrint('Filtered results: ${filteredResults.length}');
-              return _calculateDistances(filteredResults);
+              final finalResults = _calculateDistances(filteredResults);
+              await ServiceCacheManager.cacheResult(cacheParams, await finalResults);
+              return finalResults;
             }
           }
         }
@@ -257,11 +275,13 @@ class DatabaseService {
           // If we don't have contacts from the contact table, use the contact from the service table
           data['contacts'] = [data['contact'].toString()];
         }
-        return EmergencyService.fromJson(data);
+       return EmergencyService.fromJson(data);
       }).toList();
       
       debugPrint('Found ${services.length} services in search');
-      return _calculateDistances(services);
+      final finalResults = _calculateDistances(services);
+      await ServiceCacheManager.cacheResult(cacheParams, await finalResults);
+      return finalResults;
     } catch (e) {
       debugPrint('Error searching services: $e');
       return [];
@@ -359,11 +379,80 @@ class DatabaseService {
     }
   }
 
+  // Get service by ID
+  Future<EmergencyService?> getServiceById(String id) async {
+    try {
+      debugPrint('DatabaseService: Getting service with ID: $id');
+      
+      // Try to get the service from the database
+      final response = await _client
+          .from('service')
+          .select()
+          .eq('id', id)
+          .single();
+      
+      if (response == null) {
+        debugPrint('DatabaseService: Service with ID $id not found');
+        return null;
+      }
+      
+      // Get contacts for this service
+      List<String> contacts = [];
+      try {
+        final contactsResponse = await _client
+            .from('contact')
+            .select()
+            .eq('service_id', id);
+            
+        if (contactsResponse.isNotEmpty) {
+          contacts = contactsResponse
+              .map<String>((data) => data['phone_number']?.toString() ?? '')
+              .where((number) => number.isNotEmpty)
+              .toList();
+        }
+      } catch (e) {
+        debugPrint('Error fetching contacts for service $id: $e');
+        // If contact table doesn't exist, use the contact from service table
+        if (response['contact'] != null && response['contact'].toString().isNotEmpty) {
+          contacts = [response['contact'].toString()];
+        }
+      }
+      
+      // Add contacts to the service data
+      if (contacts.isNotEmpty) {
+        response['contacts'] = contacts;
+      }
+      
+      // Create and return the emergency service
+      final service = EmergencyService.fromJson(response);
+      
+      // Calculate distance if location is available
+      final locationService = LocationService();
+      final currentLocation = await locationService.getCurrentPosition();
+      
+      if (currentLocation != null && service.latitude != null && service.longitude != null) {
+        final distance = locationService.calculateDistance(
+          currentLocation.latitude,
+          currentLocation.longitude,
+          service.latitude!,
+          service.longitude!,
+        );
+        return service.copyWith(distanceKm: distance);
+      }
+      
+      return service;
+    } catch (e) {
+      debugPrint('Error fetching service by ID: $e');
+      return null;
+    }
+  }
+
   // Add to history
   Future<bool> addToHistory(String serviceId, String action) async {
     try {
-      final userId = _client.auth.currentUser?.id;
-      if (userId == null) return false;
+      final user = _client.auth.currentUser;
+      if (user == null) return false;
+      final userId = user.id;
 
       await _client.from('history').insert({
         'user_id': userId,

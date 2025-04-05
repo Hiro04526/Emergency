@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../models/emergency_service.dart';
-import '../services/api_service.dart';
+import '../services/database_service.dart';
 import '../providers/theme_provider.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class ServiceDetailsScreen extends StatefulWidget {
 }
 
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
-  final ApiService _apiService = ApiService();
+  final DatabaseService _databaseService = DatabaseService();
   late Future<EmergencyService?> _serviceFuture;
   Color? _appBarColor;
   Color? _backButtonColor;
@@ -36,7 +36,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       _serviceFuture = Future.value(widget.service);
     } else {
       // Otherwise try to fetch it by ID
-      _serviceFuture = _apiService.getServiceById(widget.serviceId);
+      _serviceFuture = _databaseService.getServiceById(widget.serviceId);
     }
   }
 
