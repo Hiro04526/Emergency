@@ -123,7 +123,9 @@ class ApiService {
           allServices.where((service) => service.id == id).firstOrNull;
       if (cachedService != null) {
         debugPrint('ApiService: Found service in cache: ${cachedService.name}');
-        return cachedService;
+        // Get verification info for this service
+        final verifiedService = await _getVerificationInfo(cachedService);
+        return verifiedService;
       }
       
       debugPrint('ApiService: Service not found in cache, checking all service types');
@@ -136,7 +138,9 @@ class ApiService {
             services.where((service) => service.id == id).firstOrNull;
         if (service != null) {
           debugPrint('ApiService: Found service in ${type.name}: ${service.name}');
-          return service;
+          // Get verification info for this service
+          final verifiedService = await _getVerificationInfo(service);
+          return verifiedService;
         }
       }
       
@@ -146,6 +150,24 @@ class ApiService {
       debugPrint('Error getting service by ID: $e');
       return null;
     }
+  }
+
+  // Get verification information for a service
+  Future<EmergencyService> _getVerificationInfo(EmergencyService service) async {
+    // In a real application, this would fetch data from a backend API
+    // For now, we'll always return fixed data as requested
+    
+    debugPrint('_getVerificationInfo called for service: ${service.name}');
+    
+    // Always set the verification info regardless of contact information
+    // This ensures the UI will always show the information
+    final updatedService = service.copyWith(
+      addedBy: "John Doe",      // Fixed value as requested
+      verifiedBy: "Enzo Panugayan",  // Fixed value as requested
+    );
+    
+    debugPrint('Updated service - addedBy: ${updatedService.addedBy}, verifiedBy: ${updatedService.verifiedBy}');
+    return updatedService;
   }
 
   // Mock data for emergency services

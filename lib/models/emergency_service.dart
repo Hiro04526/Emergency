@@ -54,7 +54,6 @@ class EmergencyService {
   final List<String> contacts;
   final double? latitude;
   final double? longitude;
-  final bool isVerified;
 
   EmergencyService({
     required this.id,
@@ -67,7 +66,6 @@ class EmergencyService {
     List<String>? contacts,
     this.latitude,
     this.longitude,
-    this.isVerified = false,
   }) : contacts = contacts ?? (contact != null ? [contact] : []);
 
   // Create a copy with modified properties
@@ -82,7 +80,6 @@ class EmergencyService {
     List<String>? contacts,
     double? latitude,
     double? longitude,
-    bool? isVerified,
   }) {
     return EmergencyService(
       id: id ?? this.id,
@@ -95,7 +92,6 @@ class EmergencyService {
       contacts: contacts ?? this.contacts,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
-      isVerified: isVerified ?? this.isVerified,
     );
   }
 
@@ -143,6 +139,7 @@ class EmergencyService {
       contacts = [json['contact']];
     }
     
+    // Create with default verification data for development purposes
     return EmergencyService(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Unknown Service',
@@ -154,7 +151,6 @@ class EmergencyService {
       contacts: contacts,
       latitude: json['latitude'] is double ? json['latitude'] : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
       longitude: json['longitude'] is double ? json['longitude'] : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
-      isVerified: json['is_verified'] == true || json['isVerified'] == true,
     );
   }
 }
