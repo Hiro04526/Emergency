@@ -391,11 +391,6 @@ class DatabaseService {
           .eq('id', id)
           .single();
       
-      if (response == null) {
-        debugPrint('DatabaseService: Service with ID $id not found');
-        return null;
-      }
-      
       // Get contacts for this service
       List<String> contacts = [];
       try {
@@ -479,6 +474,28 @@ class DatabaseService {
         return 'fire';
       case ServiceType.government:
         return 'government';
+    }
+  }
+
+  // Get unique usernames for verification info
+  Future<List<String>> getUniqueUsernames() async {
+    try {
+      final response = await _client
+          .from('user')
+          .select('username')
+          .not('username', 'is', null);
+
+      if (response.isEmpty) {
+        return [];
+      }
+
+      return response
+          .map<String>((data) => data['username']?.toString() ?? '')
+          .where((username) => username.isNotEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching unique usernames: $e');
+      return [];
     }
   }
 

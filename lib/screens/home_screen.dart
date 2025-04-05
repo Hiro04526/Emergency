@@ -702,21 +702,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  IconData _getAlertIconData(AlertType type) {
-    switch (type) {
-      case AlertType.weather:
-        return Icons.cloud;
-      case AlertType.traffic:
-        return Icons.traffic;
-      case AlertType.emergency:
-        return Icons.warning;
-      case AlertType.naturalDisaster:
-        return Icons.public;
-      case AlertType.community:
-        return Icons.people;
-    }
-  }
-
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
