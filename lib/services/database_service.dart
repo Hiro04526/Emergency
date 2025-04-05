@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'dart:convert';
+import 'dart:io';
 import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
 import 'location_service.dart';
@@ -30,25 +32,27 @@ class DatabaseService {
       }
 
       // Get the list of service IDs
-      final serviceIds = response.map<String>((data) => data['id'].toString()).toList();
-      
+      final serviceIds =
+          response.map<String>((data) => data['id'].toString()).toList();
+
       // Map to store contacts for each service
       final Map<String, List<String>> serviceContacts = {};
-      
+
       try {
         // Fetch contact numbers for these services
         final contactsResponse = await _client
             .from('contact')
             .select()
             .inFilter('service_id', serviceIds);
-            
-        debugPrint('Found ${contactsResponse.length} contacts for ${serviceIds.length} services');
-        
+
+        debugPrint(
+            'Found ${contactsResponse.length} contacts for ${serviceIds.length} services');
+
         // Create a map of service ID to list of phone numbers
         for (var contact in contactsResponse) {
           final serviceId = contact['service_id'].toString();
           final phoneNumber = contact['phone_number']?.toString();
-          
+
           if (phoneNumber != null && phoneNumber.isNotEmpty) {
             if (!serviceContacts.containsKey(serviceId)) {
               serviceContacts[serviceId] = [];
@@ -57,17 +61,19 @@ class DatabaseService {
           }
         }
       } catch (e) {
-        debugPrint('Error fetching contacts, will use contact from service table: $e');
+        debugPrint(
+            'Error fetching contacts, will use contact from service table: $e');
         // If the contact table doesn't exist, we'll just use the contact from the service table
       }
-      
+
       // Create emergency services with contact numbers
       return response.map((data) {
         final serviceId = data['id'].toString();
         // Add the contact numbers to the service data before creating the object
         if (serviceContacts.containsKey(serviceId)) {
           data['contacts'] = serviceContacts[serviceId];
-        } else if (data['contact'] != null && data['contact'].toString().isNotEmpty) {
+        } else if (data['contact'] != null &&
+            data['contact'].toString().isNotEmpty) {
           // If we don't have contacts from the contact table, use the contact from the service table
           data['contacts'] = [data['contact'].toString()];
         }
@@ -83,10 +89,7 @@ class DatabaseService {
   Future<List<EmergencyService>> getAllServices() async {
     try {
       debugPrint('Fetching all services from database');
-      final response = await _client
-          .from('service')
-          .select()
-          .order('name');
+      final response = await _client.from('service').select().order('name');
 
       debugPrint('All services response: ${response.toString()}');
 
@@ -96,25 +99,27 @@ class DatabaseService {
       }
 
       // Get the list of service IDs
-      final serviceIds = response.map<String>((data) => data['id'].toString()).toList();
-      
+      final serviceIds =
+          response.map<String>((data) => data['id'].toString()).toList();
+
       // Map to store contacts for each service
       final Map<String, List<String>> serviceContacts = {};
-      
+
       try {
         // Fetch contact numbers for these services
         final contactsResponse = await _client
             .from('contact')
             .select()
             .inFilter('service_id', serviceIds);
-            
-        debugPrint('Found ${contactsResponse.length} contacts for ${serviceIds.length} services');
-        
+
+        debugPrint(
+            'Found ${contactsResponse.length} contacts for ${serviceIds.length} services');
+
         // Create a map of service ID to list of phone numbers
         for (var contact in contactsResponse) {
           final serviceId = contact['service_id'].toString();
           final phoneNumber = contact['phone_number']?.toString();
-          
+
           if (phoneNumber != null && phoneNumber.isNotEmpty) {
             if (!serviceContacts.containsKey(serviceId)) {
               serviceContacts[serviceId] = [];
@@ -123,23 +128,25 @@ class DatabaseService {
           }
         }
       } catch (e) {
-        debugPrint('Error fetching contacts, will use contact from service table: $e');
+        debugPrint(
+            'Error fetching contacts, will use contact from service table: $e');
         // If the contact table doesn't exist, we'll just use the contact from the service table
       }
-      
+
       // Create emergency services with contact numbers
       final services = response.map((data) {
         final serviceId = data['id'].toString();
         // Add the contact numbers to the service data before creating the object
         if (serviceContacts.containsKey(serviceId)) {
           data['contacts'] = serviceContacts[serviceId];
-        } else if (data['contact'] != null && data['contact'].toString().isNotEmpty) {
+        } else if (data['contact'] != null &&
+            data['contact'].toString().isNotEmpty) {
           // If we don't have contacts from the contact table, use the contact from the service table
           data['contacts'] = [data['contact'].toString()];
         }
         return EmergencyService.fromJson(data);
       }).toList();
-      
+
       debugPrint('Found ${services.length} total services');
       return services;
     } catch (e) {
@@ -212,20 +219,26 @@ class DatabaseService {
         if (type != null) {
           debugPrint('Attempting fallback search without type filter');
           final allServices = await getAllServices();
-          
+
           if (allServices.isNotEmpty) {
-            debugPrint('Filtering ${allServices.length} services by type: ${type.name}');
+            debugPrint(
+                'Filtering ${allServices.length} services by type: ${type.name}');
             // Filter results on the client side based on type
-            final filteredResults = allServices.where((service) => 
-                service.type == type || 
-                service.name.toLowerCase().contains(_getTypeString(type).toLowerCase()) ||
-                (service.description?.toLowerCase() ?? '').contains(_getTypeString(type).toLowerCase())
-            ).toList();
-            
+            final filteredResults = allServices
+                .where((service) =>
+                    service.type == type ||
+                    service.name
+                        .toLowerCase()
+                        .contains(_getTypeString(type).toLowerCase()) ||
+                    (service.description?.toLowerCase() ?? '')
+                        .contains(_getTypeString(type).toLowerCase()))
+                .toList();
+
             if (filteredResults.isNotEmpty) {
               debugPrint('Filtered results: ${filteredResults.length}');
               final finalResults = _calculateDistances(filteredResults);
-              await ServiceCacheManager.cacheResult(cacheParams, await finalResults);
+              await ServiceCacheManager.cacheResult(
+                  cacheParams, await finalResults);
               return finalResults;
             }
           }
@@ -234,25 +247,27 @@ class DatabaseService {
       }
 
       // Get the list of service IDs
-      final serviceIds = response.map<String>((data) => data['id'].toString()).toList();
-      
+      final serviceIds =
+          response.map<String>((data) => data['id'].toString()).toList();
+
       // Map to store contacts for each service
       final Map<String, List<String>> serviceContacts = {};
-      
+
       try {
         // Fetch contact numbers for these services
         final contactsResponse = await _client
             .from('contact')
             .select()
             .inFilter('service_id', serviceIds);
-            
-        debugPrint('Found ${contactsResponse.length} contacts for ${serviceIds.length} services in search results');
-        
+
+        debugPrint(
+            'Found ${contactsResponse.length} contacts for ${serviceIds.length} services in search results');
+
         // Create a map of service ID to list of phone numbers
         for (var contact in contactsResponse) {
           final serviceId = contact['service_id'].toString();
           final phoneNumber = contact['phone_number']?.toString();
-          
+
           if (phoneNumber != null && phoneNumber.isNotEmpty) {
             if (!serviceContacts.containsKey(serviceId)) {
               serviceContacts[serviceId] = [];
@@ -261,23 +276,25 @@ class DatabaseService {
           }
         }
       } catch (e) {
-        debugPrint('Error fetching contacts, will use contact from service table: $e');
+        debugPrint(
+            'Error fetching contacts, will use contact from service table: $e');
         // If the contact table doesn't exist, we'll just use the contact from the service table
       }
-      
+
       // Create emergency services with contact numbers
       final services = response.map((data) {
         final serviceId = data['id'].toString();
         // Add the contact numbers to the service data before creating the object
         if (serviceContacts.containsKey(serviceId)) {
           data['contacts'] = serviceContacts[serviceId];
-        } else if (data['contact'] != null && data['contact'].toString().isNotEmpty) {
+        } else if (data['contact'] != null &&
+            data['contact'].toString().isNotEmpty) {
           // If we don't have contacts from the contact table, use the contact from the service table
           data['contacts'] = [data['contact'].toString()];
         }
-       return EmergencyService.fromJson(data);
+        return EmergencyService.fromJson(data);
       }).toList();
-      
+
       debugPrint('Found ${services.length} services in search');
       final finalResults = _calculateDistances(services);
       await ServiceCacheManager.cacheResult(cacheParams, await finalResults);
@@ -287,27 +304,28 @@ class DatabaseService {
       return [];
     }
   }
-  
+
   // Helper method to calculate distances for services
-  Future<List<EmergencyService>> _calculateDistances(List<EmergencyService> services) async {
+  Future<List<EmergencyService>> _calculateDistances(
+      List<EmergencyService> services) async {
     try {
       // Get the current location
       final locationService = LocationService();
       final position = await locationService.getCurrentPosition();
-      
+
       if (position != null) {
-        debugPrint('Calculating distances from current location: ${position.latitude}, ${position.longitude}');
-        
+        debugPrint(
+            'Calculating distances from current location: ${position.latitude}, ${position.longitude}');
+
         // Calculate distance for each service
         return services.map((service) {
           if (service.latitude != null && service.longitude != null) {
             final distance = locationService.calculateDistance(
-              position.latitude,
-              position.longitude,
-              service.latitude!,
-              service.longitude!
-            );
-            
+                position.latitude,
+                position.longitude,
+                service.latitude!,
+                service.longitude!);
+
             // Return a new service with the calculated distance
             return service.copyWith(distanceKm: distance);
           }
@@ -326,9 +344,10 @@ class DatabaseService {
   // Get all alerts
   Future<List<EmergencyAlert>> getAlerts() async {
     try {
-      final response = await _client
-          .rpc('fetch_alerts')
-          .select();
+      final response = await supabase.Supabase.instance.client
+          .from('alert')
+          .select()
+          .order('created_at', ascending: false);
 
       if (response.isEmpty) {
         return [];
@@ -341,10 +360,72 @@ class DatabaseService {
     }
   }
 
+  // Get a specific alert by ID
+  Future<List<EmergencyAlert>> getAlertById(String alertId) async {
+    try {
+      final response = await supabase.Supabase.instance.client
+          .from('alert')
+          .select()
+          .eq('id', alertId);
+
+      if (response.isEmpty) {
+        return [];
+      }
+
+      return response.map((data) => _parseAlert(data)).toList();
+    } catch (e) {
+      debugPrint('Error fetching alert by ID: $e');
+      return [];
+    }
+  }
+
+  // Upload an image to Supabase storage and return the public URL
+  Future<String?> uploadAlertImage(String filePath, String alertId) async {
+    try {
+      final File file = File(filePath);
+      if (!file.existsSync()) {
+        debugPrint('File does not exist: $filePath');
+        return null;
+      }
+
+      // Generate a unique file name using the alert ID and timestamp
+      final String fileName =
+          '$alertId-${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String storagePath = 'alerts/$fileName';
+
+      // Upload the file to Supabase storage
+      final response = await supabase.Supabase.instance.client.storage
+          .from('alerts')
+          .upload(storagePath, file,
+              fileOptions: const supabase.FileOptions(cacheControl: '3600'));
+
+      // Get the public URL for the uploaded file
+      final String publicUrl = supabase.Supabase.instance.client.storage
+          .from('alerts')
+          .getPublicUrl(storagePath);
+
+      debugPrint('Image uploaded successfully: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading image: $e');
+      return null;
+    }
+  }
+
   // Add a new alert
   Future<bool> addAlert(EmergencyAlert alert) async {
     try {
-      await _client.from('alert').insert({
+      String? imageUrl = alert.imageUrl;
+
+      // If there's a local image file, upload it to Supabase storage
+      if (imageUrl != null &&
+          imageUrl.isNotEmpty &&
+          !imageUrl.startsWith('http')) {
+        imageUrl = await uploadAlertImage(imageUrl, alert.id);
+      }
+
+      // Insert the alert into the database
+      await supabase.Supabase.instance.client.from('alert').insert({
         'title': alert.title,
         'description': alert.description,
         'type': alert.type.name.toLowerCase(),
@@ -354,15 +435,14 @@ class DatabaseService {
         'longitude': alert.longitude,
         'is_active': alert.isActive,
         'created_at': DateTime.now().toIso8601String(),
+        'image_url': imageUrl,
       });
-
       return true;
     } catch (e) {
       debugPrint('Error adding alert: $e');
       return false;
     }
   }
-
   // Report a service
   Future<bool> reportService(String serviceId, String reason) async {
     try {
@@ -383,22 +463,17 @@ class DatabaseService {
   Future<EmergencyService?> getServiceById(String id) async {
     try {
       debugPrint('DatabaseService: Getting service with ID: $id');
-      
+
       // Try to get the service from the database
-      final response = await _client
-          .from('service')
-          .select()
-          .eq('id', id)
-          .single();
-      
+      final response =
+          await _client.from('service').select().eq('id', id).single();
+
       // Get contacts for this service
       List<String> contacts = [];
       try {
-        final contactsResponse = await _client
-            .from('contact')
-            .select()
-            .eq('service_id', id);
-            
+        final contactsResponse =
+            await _client.from('contact').select().eq('service_id', id);
+
         if (contactsResponse.isNotEmpty) {
           contacts = contactsResponse
               .map<String>((data) => data['phone_number']?.toString() ?? '')
@@ -408,24 +483,27 @@ class DatabaseService {
       } catch (e) {
         debugPrint('Error fetching contacts for service $id: $e');
         // If contact table doesn't exist, use the contact from service table
-        if (response['contact'] != null && response['contact'].toString().isNotEmpty) {
+        if (response['contact'] != null &&
+            response['contact'].toString().isNotEmpty) {
           contacts = [response['contact'].toString()];
         }
       }
-      
+
       // Add contacts to the service data
       if (contacts.isNotEmpty) {
         response['contacts'] = contacts;
       }
-      
+
       // Create and return the emergency service
       final service = EmergencyService.fromJson(response);
-      
+
       // Calculate distance if location is available
       final locationService = LocationService();
       final currentLocation = await locationService.getCurrentPosition();
-      
-      if (currentLocation != null && service.latitude != null && service.longitude != null) {
+
+      if (currentLocation != null &&
+          service.latitude != null &&
+          service.longitude != null) {
         final distance = locationService.calculateDistance(
           currentLocation.latitude,
           currentLocation.longitude,
@@ -434,7 +512,7 @@ class DatabaseService {
         );
         return service.copyWith(distanceKm: distance);
       }
-      
+
       return service;
     } catch (e) {
       debugPrint('Error fetching service by ID: $e');
@@ -517,17 +595,56 @@ class DatabaseService {
       alertType = AlertType.emergency;
     }
 
+    // Parse coordinates as doubles if they exist
+    double? lat;
+    double? lng;
+
+    if (data['latitude'] != null) {
+      if (data['latitude'] is double) {
+        lat = data['latitude'];
+      } else {
+        lat = double.tryParse(data['latitude'].toString());
+      }
+    }
+
+    if (data['longitude'] != null) {
+      if (data['longitude'] is double) {
+        lng = data['longitude'];
+      } else {
+        lng = double.tryParse(data['longitude'].toString());
+      }
+    }
+
+    // Handle additional data if it exists
+    Map<String, dynamic>? additionalData;
+    if (data['additional_data'] != null) {
+      if (data['additional_data'] is Map) {
+        additionalData = Map<String, dynamic>.from(data['additional_data']);
+      } else if (data['additional_data'] is String) {
+        try {
+          // Try to parse JSON string if stored as string
+          additionalData = jsonDecode(data['additional_data']);
+        } catch (e) {
+          debugPrint('Error parsing additional_data: $e');
+        }
+      }
+    }
+
     return EmergencyAlert(
       id: data['id']?.toString() ?? 'unknown',
       title: data['title']?.toString() ?? 'Alert',
-      description: data['description']?.toString() ?? 'No description available',
+      description:
+          data['description']?.toString() ?? 'No description available',
       type: alertType,
-      timestamp: data['created_at'] != null ? DateTime.parse(data['created_at']) : DateTime.now(),
+      timestamp: data['created_at'] != null
+          ? DateTime.parse(data['created_at'])
+          : DateTime.now(),
       source: data['source']?.toString(),
       location: data['location']?.toString(),
-      latitude: data['latitude'] != null ? double.tryParse(data['latitude'].toString()) : null,
-      longitude: data['longitude'] != null ? double.tryParse(data['longitude'].toString()) : null,
+      latitude: lat,
+      longitude: lng,
       isActive: data['is_active'] == true,
+      imageUrl: data['image_url']?.toString(),
     );
   }
 }

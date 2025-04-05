@@ -1,9 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/emergency_alert.dart';
 import '../services/alert_service.dart';
-import 'alert_details_screen.dart';
+import '../screens/alert_details_screen.dart';
 import '../providers/theme_provider.dart';
-import 'package:provider/provider.dart';
 import 'report_alert_screen.dart';
 
 class AlertsScreen extends StatefulWidget {
@@ -54,7 +55,10 @@ class _AlertsScreenState extends State<AlertsScreen>
     });
 
     try {
+      // Force refresh alerts from the database
+      await _alertService.refreshAlerts();
       final alerts = await _alertService.getAlerts();
+      
       if (mounted) {
         setState(() {
           _alerts = alerts;
@@ -314,8 +318,66 @@ class _AlertsScreenState extends State<AlertsScreen>
                   fontSize: 15,
                   color: isDarkMode ? Colors.grey[300] : Colors.grey[800],
                 ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // Alert image (if available)
+              if (alert.imageUrl != null && alert.imageUrl!.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    height: 120,
+                    width: double.infinity,
+                    child: alert.imageUrl!.startsWith('http')
+                      ? Image.network(
+                          alert.imageUrl!,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                                color: alert.type.color,
+                                strokeWidth: 2.0,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: Center(
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey[400],
+                                  size: 32,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Image.file(
+                          File(alert.imageUrl!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: Center(
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey[400],
+                                  size: 32,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               // Alert footer with location and source
               Row(
                 children: [

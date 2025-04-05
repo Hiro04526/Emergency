@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:uuid/uuid.dart';
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
 import '../providers/theme_provider.dart';
@@ -20,6 +23,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String? _username;
   bool _isLoading = true;
   int _selectedAvatarIndex = 0;
+  File? _profileImageFile;
+  String? _profileImageUrl;
+  final ImagePicker _imagePicker = ImagePicker();
 
   // List of avatar options
   final List<IconData> _avatarOptions = [
@@ -54,6 +60,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _nameController.text = profile.name ?? '';
       _homeAddressController.text = profile.homeAddress ?? '';
       _selectedAvatarIndex = profile.avatarIndex ?? 0;
+      _profileImageUrl = profile.profileImageUrl;
 
       // Get the user ID from the current session
       final user = authService.currentUser;
@@ -61,12 +68,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (user != null) {
         try {
           // Call the get_username_by_user stored procedure
-          final usernameResponse = await supabase.Supabase.instance.client.rpc(
-            'get_username_by_user',
+          final userDataResponse = await supabase.Supabase.instance.client.rpc(
+            'get_user_data',
             params: {
               'p_uid': user.id,
             },
           ).timeout(const Duration(seconds: 5));
+
+          // If the stored procedure doesn't exist yet, fallback to the old one
+          final usernameResponse = userDataResponse != null && userDataResponse is Map ? 
+              userDataResponse['username'] : 
+              await supabase.Supabase.instance.client.rpc(
+                'get_username_by_user',
+                params: {
+                  'p_uid': user.id,
+                },
+              ).timeout(const Duration(seconds: 5));
 
           if (mounted) {
             setState(() {
@@ -79,6 +96,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   _username!.isNotEmpty &&
                   _nameController.text.isEmpty) {
                 _nameController.text = _username!;
+              }
+              
+              // Get profile image URL if available
+              if (userDataResponse != null && userDataResponse is Map && userDataResponse['profile_image_url'] != null) {
+                _profileImageUrl = userDataResponse['profile_image_url'].toString();
               }
             });
           }
@@ -233,12 +255,47 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _saveProfile() async {
     final provider = Provider.of<UserProfileProvider>(context, listen: false);
+    
+    // Handle image upload to Supabase if a new image was selected
+    String? imageUrl;
+    if (_profileImageFile != null) {
+      try {
+        // Generate a unique file name using UUID
+        final String fileName = 'profile-${const Uuid().v4()}.jpg';
+        final String storagePath = 'public/$fileName';
+        
+        // Upload the file to Supabase storage
+        final storageResponse = await supabase.Supabase.instance.client
+            .storage
+            .from('profiles') // Your bucket name
+            .upload(storagePath, _profileImageFile!);
+
+        if (storageResponse.isEmpty) {
+          print('Profile image upload failed');
+        } else {
+          // Get the public URL for the uploaded file
+          imageUrl = supabase.Supabase.instance.client
+              .storage
+              .from('profiles')
+              .getPublicUrl(storagePath);
+
+          print('Uploaded profile image URL: $imageUrl');
+          setState(() {
+            _profileImageUrl = imageUrl;
+          });
+        }
+      } catch (e) {
+        print('Error uploading profile image: $e');
+      }
+    }
+    
     provider.updateProfile(
       name: _nameController.text.isNotEmpty ? _nameController.text : null,
       homeAddress: _homeAddressController.text.isNotEmpty
           ? _homeAddressController.text
           : null,
       avatarIndex: _selectedAvatarIndex,
+      profileImageUrl: imageUrl ?? _profileImageUrl,
     );
 
     // Also update the username in the database if needed
@@ -254,6 +311,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             'p_uid': user.id,
             'p_username': _nameController.text,
             'p_avatar_index': _selectedAvatarIndex,
+            'p_profile_image_url': imageUrl ?? _profileImageUrl,
           },
         );
       } catch (e) {
@@ -313,27 +371,91 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _removeFavoriteLocation(FavoriteLocation location) async {
-    setState(() {
-      _favoriteLocations.removeWhere((loc) => loc.id == location.id);
-    });
+    try {
+      setState(() {
+        _favoriteLocations.removeWhere((item) => item.id == location.id);
+      });
 
-    // You would also remove the location from the database
-    // This assumes you have an RPC to remove a favorite location
-    // final authService = Provider.of<AuthService>(context, listen: false);
-    // final user = authService.currentUser;
-    // if (user != null) {
-    //   try {
-    //     await supabase.Supabase.instance.client.rpc(
-    //       'remove_favorite_location',
-    //       params: {
-    //         'p_uid': user.id,
-    //         'p_location_id': location.id,
-    //       },
-    //     );
-    //   } catch (e) {
-    //     print('Error removing favorite location: $e');
-    //   }
-    // }
+      // Remove from database
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = authService.currentUser;
+
+      if (user != null) {
+        await supabase.Supabase.instance.client.rpc(
+          'delete_favorite_location',
+          params: {
+            'p_uid': user.id,
+            'p_location_id': location.id,
+          },
+        );
+      }
+    } catch (e) {
+      print('Error removing favorite location: $e');
+    }
+  }
+
+  Future<void> _pickProfileImage() async {
+    // Show a dialog to choose between camera and gallery
+    final ImageSource? source = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Image Source'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: [
+                GestureDetector(
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.camera_alt),
+                        SizedBox(width: 10),
+                        Text('Camera'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop(ImageSource.camera);
+                  },
+                ),
+                const Divider(),
+                GestureDetector(
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.photo_library),
+                        SizedBox(width: 10),
+                        Text('Gallery'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    final pickedFile = await _imagePicker.pickImage(
+      source: source,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _profileImageFile = File(pickedFile.path);
+      });
+    }
   }
 
   @override
@@ -407,11 +529,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         CircleAvatar(
                           radius: 40,
                           backgroundColor: Colors.blue.withAlpha(10),
-                          child: Icon(
-                            _avatarOptions[_selectedAvatarIndex],
-                            size: 40,
-                            color: Colors.blue,
-                          ),
+                          backgroundImage: _profileImageFile != null
+                              ? FileImage(_profileImageFile!)
+                              : _profileImageUrl != null
+                                  ? NetworkImage(_profileImageUrl!) as ImageProvider
+                                  : null,
+                          child: _profileImageFile == null && _profileImageUrl == null
+                              ? Icon(
+                                  _avatarOptions[_selectedAvatarIndex],
+                                  size: 40,
+                                  color: Colors.blue,
+                                )
+                              : null,
                         ),
                         if (_isEditing)
                           Positioned(
@@ -431,58 +560,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               ),
                               child: InkWell(
                                 onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      backgroundColor: themeProvider.isDarkMode
-                                          ? Color(0xFF1E1E1E)
-                                          : Colors.white,
-                                      title: Text(
-                                        'Choose an Avatar',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      content: SizedBox(
-                                        width: double.infinity,
-                                        child: GridView.builder(
-                                          shrinkWrap: true,
-                                          gridDelegate:
-                                              SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 4,
-                                            crossAxisSpacing: 10,
-                                            mainAxisSpacing: 10,
-                                          ),
-                                          itemCount: _avatarOptions.length,
-                                          itemBuilder: (context, index) {
-                                            return InkWell(
-                                              onTap: () {
-                                                setState(() {
-                                                  _selectedAvatarIndex = index;
-                                                });
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: CircleAvatar(
-                                                backgroundColor:
-                                                    _selectedAvatarIndex ==
-                                                            index
-                                                        ? Colors.blue
-                                                        : Colors.blue
-                                                            .withAlpha(10),
-                                                child: Icon(
-                                                  _avatarOptions[index],
-                                                  color: _selectedAvatarIndex ==
-                                                          index
-                                                      ? Colors.white
-                                                      : Colors.blue,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  );
+                                  _pickProfileImage();
                                 },
                                 child: Icon(
                                   Icons.edit,

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../models/emergency_alert.dart';
 import '../services/alert_service.dart';
+import '../services/database_service.dart';
 import '../providers/theme_provider.dart';
 
 class AlertDetailsScreen extends StatefulWidget {
@@ -37,14 +39,24 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
         );
         return cachedAlert;
       } catch (e) {
-        // If not found in cache, try to fetch from database
-        await _alertService.refreshAlerts();
+        // If not found in cache, try to fetch directly from Supabase
         try {
-          // Check again in the refreshed alerts
-          return _alertService.alerts.firstWhere(
-            (a) => a.id == widget.alertId,
-            orElse: () => throw Exception('Alert not found'),
-          );
+          // Fetch the specific alert by ID from the database
+          final databaseService = DatabaseService();
+          final alerts = await databaseService.getAlertById(widget.alertId);
+          
+          if (alerts.isNotEmpty) {
+            // If found, update the local cache and return the alert
+            await _alertService.refreshAlerts();
+            return alerts.first;
+          } else {
+            // If still not found, try refreshing all alerts
+            await _alertService.refreshAlerts();
+            return _alertService.alerts.firstWhere(
+              (a) => a.id == widget.alertId,
+              orElse: () => throw Exception('Alert not found'),
+            );
+          }
         } catch (e) {
           // Re-throw if still not found
           rethrow;
@@ -244,30 +256,56 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                                   child: InteractiveViewer(
                                     minScale: 0.5,
                                     maxScale: 3.0,
-                                    child: Image.network(
-                                      alert.imageUrl!,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Center(
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(
-                                                Icons.broken_image,
-                                                size: 48,
-                                                color: Colors.grey,
+                                    child: alert.imageUrl!.startsWith('http')
+                                      ? Image.network(
+                                          alert.imageUrl!,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.broken_image,
+                                                    size: 48,
+                                                    color: Colors.grey,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    'Could not load image',
+                                                    style: TextStyle(
+                                                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                'Could not load image',
-                                                style: TextStyle(
-                                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                                                ),
+                                            );
+                                          },
+                                        )
+                                      : Image.file(
+                                          File(alert.imageUrl!),
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.broken_image,
+                                                    size: 48,
+                                                    color: Colors.grey,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    'Could not load local image',
+                                                    style: TextStyle(
+                                                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                            );
+                                          },
                                     ),
                                   ),
                                 ),
@@ -298,42 +336,71 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                           child: Stack(
                             children: [
                               Positioned.fill(
-                                child: Image.network(
-                                  alert.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value: loadingProgress.expectedTotalBytes != null
-                                            ? loadingProgress.cumulativeBytesLoaded /
-                                                loadingProgress.expectedTotalBytes!
-                                            : null,
-                                        color: alert.type.color,
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(
-                                            Icons.broken_image,
-                                            size: 48,
-                                            color: Colors.grey,
+                                child: alert.imageUrl!.startsWith('http')
+                                  ? Image.network(
+                                      alert.imageUrl!,
+                                      fit: BoxFit.cover,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) return child;
+                                        return Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded /
+                                                    loadingProgress.expectedTotalBytes!
+                                                : null,
+                                            color: alert.type.color,
+                                            strokeWidth: 2.0,
                                           ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Could not load image',
-                                            style: TextStyle(
-                                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                                            ),
+                                        );
+                                      },
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                Icons.broken_image,
+                                                size: 32,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Image not available',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    );
-                                  },
+                                        );
+                                      },
+                                    )
+                                  : Image.file(
+                                      File(alert.imageUrl!),
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                Icons.broken_image,
+                                                size: 32,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Local image not available',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
                                 ),
                               ),
                               Positioned(

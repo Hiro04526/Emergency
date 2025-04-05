@@ -6,6 +6,8 @@ import '../services/alert_service.dart';
 import '../services/location_service.dart';
 import '../services/auth_service.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 class ReportAlertScreen extends StatefulWidget {
   final AlertType? initialAlertType;
@@ -47,14 +49,14 @@ class _ReportAlertScreenState extends State<ReportAlertScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Check authentication on first load
     if (!_initialized) {
       _initialized = true;
-      
+
       // Get auth service
       final authService = Provider.of<AuthService>(context, listen: false);
-      
+
       // If not authenticated, show dialog and go back
       if (!authService.isAuthenticated) {
         // Need to use post-frame callback to avoid build issues
@@ -84,8 +86,57 @@ class _ReportAlertScreenState extends State<ReportAlertScreen> {
   }
 
   Future<void> _pickImage() async {
+    // Show a dialog to choose between camera and gallery
+    final ImageSource? source = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Image Source'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: [
+                GestureDetector(
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.camera_alt),
+                        SizedBox(width: 10),
+                        Text('Camera'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop(ImageSource.camera);
+                  },
+                ),
+                const Divider(),
+                GestureDetector(
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.photo_library),
+                        SizedBox(width: 10),
+                        Text('Gallery'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
     final pickedFile = await _imagePicker.pickImage(
-      source: ImageSource.camera,
+      source: source,
       maxWidth: 1200,
       maxHeight: 1200,
       imageQuality: 85,
@@ -120,9 +171,43 @@ class _ReportAlertScreenState extends State<ReportAlertScreen> {
         }
       }
 
+      // Generate a unique ID for the alert
+      final alertId = 'user-report-${DateTime.now().millisecondsSinceEpoch}';
+      
+      // Handle image upload to Supabase if an image was selected
+      String? imageUrl;
+      if (_imageFile != null) {
+        try {
+          // Generate a unique file name using UUID
+          final String fileName = 'alert-${const Uuid().v4()}.jpg';
+          final String storagePath = 'public/$fileName';
+          
+          // Upload the file to Supabase storage
+          final storageResponse = await supabase.Supabase.instance.client
+              .storage
+              .from('alerts') // Your bucket name
+              .upload(storagePath, _imageFile!);
+
+          if (storageResponse.isEmpty) {
+            print('Upload failed');
+          } else {
+            // Get the public URL for the uploaded file
+            imageUrl = supabase.Supabase.instance.client
+                .storage
+                .from('alerts')
+                .getPublicUrl(storagePath);
+
+            print('Uploaded image URL: $imageUrl');
+          }
+        } catch (e) {
+          print('Error uploading image: $e');
+          // Continue with alert creation even if image upload fails
+        }
+      }
+
       // Create a new alert
       final newAlert = EmergencyAlert(
-        id: 'user-report-${DateTime.now().millisecondsSinceEpoch}',
+        id: alertId,
         title: _titleController.text,
         description: _descriptionController.text,
         type: _selectedType,
@@ -132,25 +217,29 @@ class _ReportAlertScreenState extends State<ReportAlertScreen> {
         latitude: latitude,
         longitude: longitude,
         isActive: true,
-        imageUrl: _imageFile?.path,
-        additionalData: {
-          'verified': false,
-          'upvotes': 0,
-          'downvotes': 0,
-          'comments': [],
-        },
+        // Use the Supabase URL if upload succeeded, otherwise use local path
+        imageUrl: imageUrl ?? _imageFile?.path,
       );
 
       // Add the alert to the service
-      await _alertService.addAlert(newAlert);
+      final success = await _alertService.addAlert(newAlert);
 
-      if (mounted) {
+      if (success && mounted) {
+        // Refresh alerts to include the new one
+        await _alertService.refreshAlerts();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Report submitted successfully')),
         );
         Navigator.pop(context);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Failed to submit report. Please try again.')),
+        );
       }
     } catch (e) {
+      print('Error submitting report: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error submitting report: $e')),

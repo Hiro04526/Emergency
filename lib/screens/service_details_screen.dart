@@ -29,8 +29,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('ServiceDetailsScreen: Loading service with ID: ${widget.serviceId}');
-    
+    debugPrint(
+        'ServiceDetailsScreen: Loading service with ID: ${widget.serviceId}');
+
     // If a service object was passed, use it directly
     if (widget.service != null) {
       _serviceFuture = Future.value(widget.service);
@@ -42,8 +43,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Future<void> _makePhoneCall(String phoneNumber) async {
     // Format the phone number by removing any non-digit characters except +
-    final String formattedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    
+    final String formattedNumber =
+        phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+
     try {
       // Try different URI formats
       final List<String> uriFormats = [
@@ -51,21 +53,19 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         'tel://$formattedNumber',
         'voicemail:$formattedNumber'
       ];
-      
+
       bool launched = false;
       for (final uriString in uriFormats) {
         final Uri uri = Uri.parse(uriString);
         debugPrint('Attempting to launch A: $uriString');
-
 
         launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (launched) {
           debugPrint('Successfully launched: $uriString');
           break;
         }
-
       }
-      
+
       if (!launched) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -97,16 +97,16 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     try {
       // Simulate API call to verify the service
       await Future.delayed(const Duration(seconds: 2));
-      
+
       // Update the service with verified status
       final updatedService = service.copyWith(isVerified: true);
-      
+
       // Update the UI
       setState(() {
         _serviceFuture = Future.value(updatedService);
         _isVerifying = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -120,7 +120,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       setState(() {
         _isVerifying = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -156,16 +156,19 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Thank you for your report. We will review it shortly.'),
+          content:
+              Text('Thank you for your report. We will review it shortly.'),
           duration: Duration(seconds: 3),
         ),
       );
     }
   }
 
-  Future<void> _openInMaps(double latitude, double longitude, String name) async {
-    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
-    
+  Future<void> _openInMaps(
+      double latitude, double longitude, String name) async {
+    final url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
+
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -196,14 +199,17 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
-    
+
     return Scaffold(
       backgroundColor: isDarkMode ? Color(0xFF121212) : Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: _appBarColor ?? (isDarkMode ? Color(0xFF1E1E1E) : Colors.white),
+        backgroundColor:
+            _appBarColor ?? (isDarkMode ? Color(0xFF1E1E1E) : Colors.white),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: _backButtonColor ?? (isDarkMode ? Colors.white : Colors.blue)),
+          icon: Icon(Icons.arrow_back,
+              color: _backButtonColor ??
+                  (isDarkMode ? Colors.white : Colors.blue)),
           onPressed: () => Navigator.pop(context),
         ),
         title: _appBarColor != null
@@ -239,7 +245,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           }
 
           final service = snapshot.data!;
-          
+
           // Debug print to check service data
           debugPrint('Service details - Name: ${service.name}');
           debugPrint('Service details - AddedBy: ${service.addedBy}');
@@ -288,7 +294,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                                 color: service.type.color,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: isDarkMode ? Color(0xFF121212) : Colors.white,
+                                  color: isDarkMode
+                                      ? Color(0xFF121212)
+                                      : Colors.white,
                                   width: 2,
                                 ),
                               ),
@@ -319,7 +327,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                           Text(
                             service.level,
                             style: TextStyle(
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
@@ -329,13 +339,17 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                               Icon(
                                 Icons.location_on_outlined,
                                 size: 14,
-                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 '${service.distanceKm.toStringAsFixed(1)} km away',
                                 style: TextStyle(
-                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  color: isDarkMode
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                   fontSize: 14,
                                 ),
                               ),
@@ -359,23 +373,27 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...service.contacts.map((contact) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _makePhoneCall(contact),
-                        icon: const Icon(Icons.phone, size: 18),
-                        label: Text(contact),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: service.type.color,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                      ),
-                    ),
-                  )).toList(),
-                ] else if (service.contact != null && service.contact!.isNotEmpty) ...[
+                  ...service.contacts
+                      .map((contact) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _makePhoneCall(contact),
+                                icon: const Icon(Icons.phone, size: 18),
+                                label: Text(contact),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: service.type.color,
+                                  foregroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                ),
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ] else if (service.contact != null &&
+                    service.contact!.isNotEmpty) ...[
                   const Text(
                     'Contact Number',
                     style: TextStyle(
@@ -402,12 +420,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 const SizedBox(height: 20),
 
                 // Verification and Report buttons
-                if (!service.isVerified) ...[
+                if (!service.isVerified && service.verifiedBy == null) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _isVerifying ? null : () => _verifyService(service),
-                      icon: _isVerifying 
+                      onPressed:
+                          _isVerifying ? null : () => _verifyService(service),
+                      icon: _isVerifying
                           ? Container(
                               width: 18,
                               height: 18,
@@ -418,12 +437,14 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                               ),
                             )
                           : const Icon(Icons.verified_user, size: 18),
-                      label: Text(_isVerifying ? 'Verifying...' : 'Verify Number'),
+                      label:
+                          Text(_isVerifying ? 'Verifying...' : 'Verify Number'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: service.type.color,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
-                        disabledBackgroundColor: service.type.color.withValues(alpha: 0.6),
+                        disabledBackgroundColor:
+                            service.type.color.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
@@ -462,7 +483,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                        color:
+                            isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
                       ),
                     ),
                     child: Row(
@@ -480,14 +502,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                                 service.name,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black87,
                                 ),
                               ),
                               Text(
                                 'Latitude: ${service.latitude!.toStringAsFixed(6)}, Longitude: ${service.longitude!.toStringAsFixed(6)}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  color: isDarkMode
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -550,7 +576,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                               ),
                             ),
                             TextSpan(
-                              text: service.addedBy ?? "John Doe", // Fallback in case model value is null
+                              text: service.addedBy ??
+                                  "Sherwin Yaun", // Fallback in case model value is null
                               style: TextStyle(color: Colors.grey[800]),
                             ),
                           ],
@@ -571,7 +598,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                                   ),
                                 ),
                                 TextSpan(
-                                  text: service.verifiedBy ?? "Enzo Panugayan", // Fallback in case model value is null
+                                  text: service.verifiedBy ??
+                                      "Enzo Panugayan", // Fallback in case model value is null
                                   style: TextStyle(color: Colors.grey[800]),
                                 ),
                               ],
@@ -588,9 +616,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Show contact information if available
-                if (service.contact != null && service.contact!.isNotEmpty) ...[                  
+                if (service.contact != null && service.contact!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -627,6 +655,59 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     ),
                   ),
                 ],
+                
+                const SizedBox(height: 20),
+                
+                // Added by and Verified by information
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.person_add,
+                            size: 16,
+                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Added by: ${service.addedBy ?? "System"}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (service.isVerified) ...[  // Only show if service is verified
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.verified_user,
+                              size: 16,
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Verified by: ${service.verifiedBy ?? "System"}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           );
@@ -645,8 +726,6 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         return Icons.local_fire_department;
       case ServiceType.government:
         return Icons.account_balance;
-      default:
-        return Icons.emergency;
     }
   }
 }

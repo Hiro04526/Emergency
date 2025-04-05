@@ -327,10 +327,39 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             child: Row(
               children: [
-                Icon(
-                  _getIconData(service.type),
-                  color: isDarkMode ? Colors.white : service.type.color,
-                  size: 24,
+                // Service type icon with verification indicator for verified services
+                Stack(
+                  children: [
+                    Icon(
+                      _getIconData(service.type),
+                      color: isDarkMode ? Colors.white : service.type.color,
+                      size: 24,
+                    ),
+                    if (service.isVerified)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDarkMode ? Colors.black : Colors.white,
+                              width: 1,
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.check,
+                              size: 8,
+                              color: service.type.color,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 8),
                 Expanded(

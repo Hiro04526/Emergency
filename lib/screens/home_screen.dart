@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
@@ -38,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Ensure we have alerts loaded
       await _alertService.getAlerts();
-      
+
       if (mounted) {
         setState(() {
           _recentAlerts = _alertService.getRecentAlerts(limit: 2);
@@ -66,8 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: SvgPicture.asset(
-          'assets/logo/Component_1.svg', 
-          height: 40, 
+          'assets/logo/Component_1.svg',
+          height: 40,
           width: 150,
         ),
         backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
@@ -106,14 +107,14 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Recent Alerts Section
                 _buildRecentAlertsSection(),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Report Alert Button
                 _buildReportAlertButton(),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Navbar with location
                 _buildNavbar(),
 
@@ -179,7 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Provider.of<ThemeProvider>(context).isDarkMode ? Colors.white : Colors.black,
+                          color: Provider.of<ThemeProvider>(context).isDarkMode
+                              ? Colors.white
+                              : Colors.black,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -264,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRecentAlertsSection() {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -309,181 +312,157 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 8),
         _recentAlerts.isEmpty
-          ? Container(
-              decoration: BoxDecoration(
-                color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
-              child: Center(
+            ? Container(
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color:
+                          isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+                ),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 24.0, horizontal: 16.0),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.notifications_off_outlined,
+                        size: 40,
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[500],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No alerts at this time',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color:
+                              isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Stay tuned for emergency notifications',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color:
+                              isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color:
+                          isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+                ),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.notifications_off_outlined,
-                      size: 40,
-                      color: isDarkMode ? Colors.grey[400] : Colors.grey[500],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No alerts at this time',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                    // Header with refresh button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Latest Updates',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.refresh,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: BoxConstraints(),
+                            onPressed: () async {
+                              setState(() {
+                                _isRefreshing = true;
+                              });
+
+                              try {
+                                await _alertService.refreshAlerts();
+                                await _loadRecentAlerts();
+                              } catch (e) {
+                                print('Error refreshing alerts: $e');
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text('Error refreshing alerts')),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isRefreshing = false;
+                                  });
+                                }
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Stay tuned for emergency notifications',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
+                    // Divider
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                     ),
+                    // Alerts list
+                    _isRefreshing
+                        ? Container(
+                            height: 200,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.0,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(0),
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _recentAlerts.length,
+                            separatorBuilder: (context, index) => Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: isDarkMode
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
+                              indent: 16,
+                              endIndent: 16,
+                            ),
+                            itemBuilder: (context, index) {
+                              return _buildAlertCard(_recentAlerts[index]);
+                            },
+                          ),
+
                   ],
                 ),
               ),
-            )
-          : Container(
-              decoration: BoxDecoration(
-                color: isDarkMode ? Color(0xFF1E1E1E) : Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
-              ),
-              child: Column(
-                children: [
-                  // Header with refresh button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Latest Updates',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.refresh,
-                            color: Colors.blue,
-                            size: 20,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(),
-                          onPressed: () async {
-                            setState(() {
-                              _isRefreshing = true;
-                            });
-                            
-                            try {
-                              await _alertService.refreshAlerts();
-                              await _loadRecentAlerts();
-                            } catch (e) {
-                              print('Error refreshing alerts: $e');
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error refreshing alerts')),
-                                );
-                              }
-                            } finally {
-                              if (mounted) {
-                                setState(() {
-                                  _isRefreshing = false;
-                                });
-                              }
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Divider
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                  ),
-                  // Alerts list
-                  _isRefreshing 
-                    ? Container(
-                        height: 200,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.0,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(0),
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _recentAlerts.length,
-                        separatorBuilder: (context, index) => Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                          indent: 16,
-                          endIndent: 16,
-                        ),
-                        itemBuilder: (context, index) {
-                          return _buildAlertCard(_recentAlerts[index]);
-                        },
-                      ),
-                  // View all alerts button
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey[850] : Colors.grey[100],
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
-                      ),
-                    ),
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AlertsScreen(),
-                          ),
-                        );
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.only(
-                            bottomLeft: Radius.circular(12),
-                            bottomRight: Radius.circular(12),
-                          ),
-                        ),
-                      ),
-                      child: Text(
-                        'View All Alerts',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
       ],
     );
   }
 
   Widget _buildAlertCard(EmergencyAlert alert) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    
+    final hasImage = alert.imageUrl != null && alert.imageUrl!.isNotEmpty;
+
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -493,92 +472,179 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Row(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12.0),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Alert type icon
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: alert.type.color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                alert.type.icon,
-                color: alert.type.color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Alert content
-            Expanded(
-              child: Column(
+            // Alert header
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Alert title
-                  Text(
-                    alert.title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : Colors.black87,
+                  // Alert type icon
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: alert.type.color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  // Alert description
-                  Text(
-                    alert.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                    child: Icon(
+                      alert.type.icon,
+                      color: alert.type.color,
+                      size: 24,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  // Alert metadata
-                  Row(
-                    children: [
-                      // Alert type
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: alert.type.color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          alert.type.name,
+                  const SizedBox(width: 12),
+                  // Alert content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Alert title
+                        Text(
+                          alert.title,
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: alert.type.color,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Alert time
-                      Icon(
-                        Icons.access_time,
-                        size: 12,
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatTimestamp(alert.timestamp),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        const SizedBox(height: 4),
+                        // Alert description
+                        Text(
+                          alert.description,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[700],
+                          ),
+                          maxLines: hasImage ? 2 : 3,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        // Alert metadata
+                        Row(
+                          children: [
+                            // Alert type
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: alert.type.color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                alert.type.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: alert.type.color,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Alert time
+                            Icon(
+                              Icons.access_time,
+                              size: 12,
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatTimestamp(alert.timestamp),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
+
+            // Alert image (if available)
+            if (hasImage)
+              ClipRRect(
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+                child: SizedBox(
+                  height: 120,
+                  width: double.infinity,
+                  child: alert.imageUrl!.startsWith('http')
+                      ? Image.network(
+                          alert.imageUrl!,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                color: alert.type.color,
+                                strokeWidth: 2.0,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: Center(
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey[400],
+                                  size: 32,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Image.file(
+                          File(alert.imageUrl!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: Center(
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey[400],
+                                  size: 32,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ),
           ],
         ),
       ),
@@ -589,15 +655,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
 
-    return SizedBox(
+    return Container(
       width: double.infinity,
       child: ElevatedButton.icon(
-        icon: const Icon(Icons.add_alert),
+        icon: const Icon(Icons.warning_amber_rounded),
         label: const Text('Report Alert'),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -637,7 +703,8 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDarkMode ? Color(0xFF1E1E1E) : Colors.blue.withValues(alpha: 51), // Increased from 26 to 51 (0.2 * 255)
+            color:
+                isDarkMode ? Color(0xFF1E1E1E) : Colors.blue.withOpacity(0.2),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
