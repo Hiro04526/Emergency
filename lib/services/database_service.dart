@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
-import 'dart:convert';
 import 'dart:io';
 import '../models/emergency_service.dart';
 import '../models/emergency_alert.dart';
-import 'location_service.dart';
 import 'cache_manager_service.dart';
 
 class DatabaseService {
@@ -17,7 +15,7 @@ class DatabaseService {
   supabase.SupabaseClient get _client => supabase.Supabase.instance.client;
 
   // Get emergency services by type
-  Future<List<EmergencyService>> getServicesByType(ServiceType type) async {
+  Future<List<CondoService>> getServicesByType(ServiceType type) async {
     try {
       final typeString = _getTypeString(type);
 
@@ -77,7 +75,7 @@ class DatabaseService {
           // If we don't have contacts from the contact table, use the contact from the service table
           data['contacts'] = [data['contact'].toString()];
         }
-        return EmergencyService.fromJson(data);
+        return CondoService.fromJson(data);
       }).toList();
     } catch (e) {
       debugPrint('Error fetching services: $e');
@@ -86,7 +84,7 @@ class DatabaseService {
   }
 
   // Get all emergency services
-  Future<List<EmergencyService>> getAllServices() async {
+  Future<List<CondoService>> getAllServices() async {
     try {
       debugPrint('Fetching all services from database');
       final response = await _client.from('service').select().order('name');
@@ -98,53 +96,9 @@ class DatabaseService {
         return [];
       }
 
-      // Get the list of service IDs
-      final serviceIds =
-          response.map<String>((data) => data['id'].toString()).toList();
-
-      // Map to store contacts for each service
-      final Map<String, List<String>> serviceContacts = {};
-
-      try {
-        // Fetch contact numbers for these services
-        final contactsResponse = await _client
-            .from('contact')
-            .select()
-            .inFilter('service_id', serviceIds);
-
-        debugPrint(
-            'Found ${contactsResponse.length} contacts for ${serviceIds.length} services');
-
-        // Create a map of service ID to list of phone numbers
-        for (var contact in contactsResponse) {
-          final serviceId = contact['service_id'].toString();
-          final phoneNumber = contact['phone_number']?.toString();
-
-          if (phoneNumber != null && phoneNumber.isNotEmpty) {
-            if (!serviceContacts.containsKey(serviceId)) {
-              serviceContacts[serviceId] = [];
-            }
-            serviceContacts[serviceId]!.add(phoneNumber);
-          }
-        }
-      } catch (e) {
-        debugPrint(
-            'Error fetching contacts, will use contact from service table: $e');
-        // If the contact table doesn't exist, we'll just use the contact from the service table
-      }
-
       // Create emergency services with contact numbers
       final services = response.map((data) {
-        final serviceId = data['id'].toString();
-        // Add the contact numbers to the service data before creating the object
-        if (serviceContacts.containsKey(serviceId)) {
-          data['contacts'] = serviceContacts[serviceId];
-        } else if (data['contact'] != null &&
-            data['contact'].toString().isNotEmpty) {
-          // If we don't have contacts from the contact table, use the contact from the service table
-          data['contacts'] = [data['contact'].toString()];
-        }
-        return EmergencyService.fromJson(data);
+        return CondoService.fromJson(data);
       }).toList();
 
       debugPrint('Found ${services.length} total services');
@@ -156,7 +110,7 @@ class DatabaseService {
   }
 
   // Search emergency services
-  Future<List<EmergencyService>> searchServices({
+  Future<List<CondoService>> searchServices({
     String? query,
     ServiceType? type,
     String? region,
@@ -224,23 +178,6 @@ class DatabaseService {
             debugPrint(
                 'Filtering ${allServices.length} services by type: ${type.name}');
             // Filter results on the client side based on type
-            final filteredResults = allServices
-                .where((service) =>
-                    service.type == type ||
-                    service.name
-                        .toLowerCase()
-                        .contains(_getTypeString(type).toLowerCase()) ||
-                    (service.description?.toLowerCase() ?? '')
-                        .contains(_getTypeString(type).toLowerCase()))
-                .toList();
-
-            if (filteredResults.isNotEmpty) {
-              debugPrint('Filtered results: ${filteredResults.length}');
-              final finalResults = _calculateDistances(filteredResults);
-              await ServiceCacheManager.cacheResult(
-                  cacheParams, await finalResults);
-              return finalResults;
-            }
           }
         }
         return [];
@@ -281,63 +218,17 @@ class DatabaseService {
         // If the contact table doesn't exist, we'll just use the contact from the service table
       }
 
-      // Create emergency services with contact numbers
-      final services = response.map((data) {
-        final serviceId = data['id'].toString();
-        // Add the contact numbers to the service data before creating the object
-        if (serviceContacts.containsKey(serviceId)) {
-          data['contacts'] = serviceContacts[serviceId];
-        } else if (data['contact'] != null &&
-            data['contact'].toString().isNotEmpty) {
-          // If we don't have contacts from the contact table, use the contact from the service table
-          data['contacts'] = [data['contact'].toString()];
-        }
-        return EmergencyService.fromJson(data);
+      // Map the response to EmergencyService objects, attaching contacts if needed
+      final results = response.map<EmergencyService>((data) {
+        final id = data['id'].toString();
+        final contacts = serviceContacts[id] ?? [];
+        return EmergencyService.fromMap({...data, 'contacts': contacts});
       }).toList();
 
-      debugPrint('Found ${services.length} services in search');
-      final finalResults = _calculateDistances(services);
-      await ServiceCacheManager.cacheResult(cacheParams, await finalResults);
-      return finalResults;
+      return results;
     } catch (e) {
       debugPrint('Error searching services: $e');
       return [];
-    }
-  }
-
-  // Helper method to calculate distances for services
-  Future<List<EmergencyService>> _calculateDistances(
-      List<EmergencyService> services) async {
-    try {
-      // Get the current location
-      final locationService = LocationService();
-      final position = await locationService.getCurrentPosition();
-
-      if (position != null) {
-        debugPrint(
-            'Calculating distances from current location: ${position.latitude}, ${position.longitude}');
-
-        // Calculate distance for each service
-        return services.map((service) {
-          if (service.latitude != null && service.longitude != null) {
-            final distance = locationService.calculateDistance(
-                position.latitude,
-                position.longitude,
-                service.latitude!,
-                service.longitude!);
-
-            // Return a new service with the calculated distance
-            return service.copyWith(distanceKm: distance);
-          }
-          return service;
-        }).toList();
-      } else {
-        debugPrint('Current location not available, using default distances');
-        return services;
-      }
-    } catch (e) {
-      debugPrint('Error calculating distances: $e');
-      return services;
     }
   }
 
@@ -394,10 +285,9 @@ class DatabaseService {
       final String storagePath = 'alerts/$fileName';
 
       // Upload the file to Supabase storage
-      final response = await supabase.Supabase.instance.client.storage
-          .from('alerts')
-          .upload(storagePath, file,
-              fileOptions: const supabase.FileOptions(cacheControl: '3600'));
+      await supabase.Supabase.instance.client.storage.from('alerts').upload(
+          storagePath, file,
+          fileOptions: const supabase.FileOptions(cacheControl: '3600'));
 
       // Get the public URL for the uploaded file
       final String publicUrl = supabase.Supabase.instance.client.storage
@@ -443,6 +333,7 @@ class DatabaseService {
       return false;
     }
   }
+
   // Report a service
   Future<bool> reportService(String serviceId, String reason) async {
     try {
@@ -460,7 +351,7 @@ class DatabaseService {
   }
 
   // Get service by ID
-  Future<EmergencyService?> getServiceById(String id) async {
+  Future<CondoService?> getServiceById(String id) async {
     try {
       debugPrint('DatabaseService: Getting service with ID: $id');
 
@@ -495,23 +386,7 @@ class DatabaseService {
       }
 
       // Create and return the emergency service
-      final service = EmergencyService.fromJson(response);
-
-      // Calculate distance if location is available
-      final locationService = LocationService();
-      final currentLocation = await locationService.getCurrentPosition();
-
-      if (currentLocation != null &&
-          service.latitude != null &&
-          service.longitude != null) {
-        final distance = locationService.calculateDistance(
-          currentLocation.latitude,
-          currentLocation.longitude,
-          service.latitude!,
-          service.longitude!,
-        );
-        return service.copyWith(distanceKm: distance);
-      }
+      final service = CondoService.fromJson(response);
 
       return service;
     } catch (e) {
@@ -544,14 +419,12 @@ class DatabaseService {
   // Helper method to convert ServiceType to string for database
   String _getTypeString(ServiceType type) {
     switch (type) {
-      case ServiceType.police:
-        return 'police';
-      case ServiceType.medical:
-        return 'medical';
-      case ServiceType.fireStation:
-        return 'fire';
-      case ServiceType.government:
-        return 'government';
+      case ServiceType.groupBuy:
+        return 'groupBuy';
+      case ServiceType.buyAndSell:
+        return 'buyAndSell';
+      case ServiceType.inHousePickup:
+        return 'inHousePickup';
     }
   }
 
@@ -612,21 +485,6 @@ class DatabaseService {
         lng = data['longitude'];
       } else {
         lng = double.tryParse(data['longitude'].toString());
-      }
-    }
-
-    // Handle additional data if it exists
-    Map<String, dynamic>? additionalData;
-    if (data['additional_data'] != null) {
-      if (data['additional_data'] is Map) {
-        additionalData = Map<String, dynamic>.from(data['additional_data']);
-      } else if (data['additional_data'] is String) {
-        try {
-          // Try to parse JSON string if stored as string
-          additionalData = jsonDecode(data['additional_data']);
-        } catch (e) {
-          debugPrint('Error parsing additional_data: $e');
-        }
       }
     }
 
